@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2020 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2022 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -22,44 +22,10 @@
  * SOFTWARE.
  */
 
-/**
- * AT GSM network processor.
- */
-class ntAtNetwork {
+const path = require('path');
 
-    GSM_NETWORK_AUTOMATIC       = 0
-    GSM_NETWORK_MANUAL          = 1
-    GSM_NETWORK_DEREGISTER      = 2
-    GSM_NETWORK_SET_FORMAT      = 3
-    GSM_NETWORK_MANUAL_AUTO     = 4
-
-    GSM_FORMAT_LONG_ALPHA       = 0
-    GSM_FORMAT_SHORT_ALPHA      = 1
-    GSM_FORMAT_NUMERIC          = 2
-
-    GSM_STATUS_UNKNOWN          = 0
-    GSM_STATUS_AVAILABLE        = 1
-    GSM_STATUS_CURRENT          = 2
-    GSM_STATUS_FORBIDDEN        = 3
-
-    constructor(code, mode, format, status) {
-        this.code = code;
-        this.mode = mode;
-        this.format = format;
-        this.status = status;
-    }
-
-    static from(a) {
-        return new this(a[2], a[0], a[1], a[3]);
-    }
-
-    static list(networks) {
-        const items = [];
-        for (let i = 0; i < networks.length; i++) {
-            items.push(this.from(networks[i]));
-        }
-        return items;
-    }
+module.exports = {
+    AtPool: require('./at-pool'),
+    AtConst: require('./at-const'),
+    AtDriverIni: path.join(__dirname, 'Drivers.ini'),
 }
-
-module.exports = ntAtNetwork;

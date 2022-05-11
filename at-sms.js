@@ -1,10 +1,10 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2020 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2018-2022 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
+ * this software and associated documeAtion files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
  * of the Software, and to permit persons to whom the Software is furnished to do
@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-const CharSequence  = require('@ntlab/ntlib/charseq');
+const CharSequence = require('@ntlab/ntlib/charseq');
 
 const BIT_0         = 0x01;
 const BIT_1         = 0x02;
@@ -33,13 +33,13 @@ const BIT_5         = 0x20;
 const BIT_6         = 0x40;
 const BIT_7         = 0x80;
 
-/** @type {ntAtSms}  */
+/** @type {AtSms}  */
 let sms;
 
 /**
  * GSM SMS functions, originally taken from https://sourceforge.net/projects/fma/.
  */
-class ntAtSms {
+class AtSms {
 
     Alphabet7Escape = 0x1b // 27
 
@@ -74,7 +74,7 @@ class ntAtSms {
         '125': 41,
         '126': 61,
         '8364': 101, // Euro sign
-        '-1': 63 // 63 = '?' (FMA specific implementation) should we fail/error here?
+        '-1': 63 // 63 = '?' (FMA specific implemeAtion) should we fail/error here?
     }
 
     SMS_8BIT_REF    = 0
@@ -221,7 +221,7 @@ class ntAtSms {
                     } else {
                         char = 63;
                         /*
-                          63 = '?' (FMA specific implementation) }
+                          63 = '?' (FMA specific implemeAtion) }
                           // WE HAVE CONFLICT IN THE DOCS!!! A -or- B
                           { A. http://www.unicode.org/Public/MAPPINGS/ETSI/GSM0338.TXT
                             The ESC character 0x1B is mapped to the no-break space character, unless it is part of a
@@ -638,7 +638,7 @@ class ntAtSms {
             }
             let isSubmit = (pduType & 3) == 1;
             let isReport = (pduType & 3) == 2;
-            result = !isReport ? new ntAtSmsMessage() : new ntAtSmsStatusReport();
+            result = !isReport ? new AtSmsMessage() : new AtSmsStatusReport();
             result.pdu = PDU;
             result.tplen = pduSize;
             result.submit = isSubmit;
@@ -742,7 +742,7 @@ class ntAtSms {
 /**
  * SMS message.
  */
-class ntAtSmsMessage {
+class AtSmsMessage {
 
     constructor() {
         this.dcs = sms.CODING_SCHEME.CS_UNKNOWN;
@@ -852,7 +852,7 @@ class ntAtSmsMessage {
             if (options.requestReply) header = header | BIT_7;
             data.push(sms.hexPad(header.toString(16).toUpperCase(), 2));
             /*
-            The MR field gives an integer (0..255) representation of a reference number of the SMS-SUBMIT
+            The MR field gives an integer (0..255) represeAtion of a reference number of the SMS-SUBMIT
             submitted to the SMSC by the MS.
             */
             // Let the phone set Msg Ref itself
@@ -1028,7 +1028,7 @@ class ntAtSmsMessage {
 /**
  * SMS status report.
  */
-class ntAtSmsStatusReport {
+class AtSmsStatusReport {
 
     constructor() {
         this.status = null;
@@ -1083,10 +1083,10 @@ class ntAtSmsStatusReport {
     }
 }
 
-sms = new ntAtSms();
+sms = new AtSms();
 
 module.exports = {
-    ntAtSms: sms,
-    ntAtSmsMessage: ntAtSmsMessage,
-    ntAtSmsStatusReport: ntAtSmsStatusReport,
+    AtSms: sms,
+    AtSmsMessage: AtSmsMessage,
+    AtSmsStatusReport: AtSmsStatusReport,
 }

@@ -1,7 +1,0 @@
-{
-    "secret": "CHANGEME",
-    "security": {
-        "username": "admin",
-        "password": "admin"
-    }
-}

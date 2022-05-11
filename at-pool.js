@@ -1,10 +1,10 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2020 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2018-2022 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
+ * this software and associated documeAtion files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
  * of the Software, and to permit persons to whom the Software is furnished to do
@@ -22,16 +22,16 @@
  * SOFTWARE.
  */
 
-const ntWork         = require('@ntlab/ntlib/work');
-const { ntAtDriver } = require('./at-driver');
-const ntAtGsm        = require('./at-gsm');
+const Work = require('@ntlab/work/work');
+const { AtDriver } = require('./at-driver');
+const AtGsm = require('./at-gsm');
 
 /**
  * AT modems pool.
  */
-class ntAtPool {
+class AtPool {
 
-    Driver = ntAtDriver
+    Driver = AtDriver
 
     init(factory, config) {
         this.items = {};
@@ -45,27 +45,27 @@ class ntAtPool {
         if (typeof this.streamFactory != 'function') {
             return Promise.reject('Invalid stream factory, only function accepted.');
         }
-        return ntWork.works([
-            () => new Promise((resolve, reject) => {
+        return Work.works([
+            w => new Promise((resolve, reject) => {
                 this.streamFactory(streamName)
-                    .then((stream) => {
+                    .then(stream => {
                         console.log('%s: Try detecting modem...', streamName);
-                        gsm = new ntAtGsm(streamName, stream, this.config);
+                        gsm = new AtGsm(streamName, stream, this.config);
                         resolve();
                     })
-                    .catch((err) => reject(err))
+                    .catch(err => reject(err))
                 ;
             }),
-            () => new Promise((resolve, reject) => {
+            w => new Promise((resolve, reject) => {
                 gsm.detect()
-                    .then((driver) => {
+                    .then(driver => {
                         console.log('%s: Modem successfully detected as %s.', streamName, driver.desc);
                         resolve();
                     })
-                    .catch((err) => reject(err))
+                    .catch(err => reject(err))
                 ;
             }),
-            () => new Promise((resolve, reject) => {
+            w => new Promise((resolve, reject) => {
                 gsm.initialize()
                     .then(() => {
                         this.items[streamName] = gsm;
@@ -88,7 +88,7 @@ class ntAtPool {
                         console.log('-'.repeat(50));
                         resolve(gsm);
                     })
-                    .catch((err) => reject(err))
+                    .catch(err => reject(err))
                 ;
             }),
         ]);
@@ -101,4 +101,4 @@ class ntAtPool {
     }
 }
 
-module.exports = new ntAtPool();
+module.exports = new AtPool();

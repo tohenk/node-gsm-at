@@ -1,10 +1,10 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2020 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2018-2022 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
+ * this software and associated documeAtion files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
  * of the Software, and to permit persons to whom the Software is furnished to do
@@ -22,20 +22,18 @@
  * SOFTWARE.
  */
 
-const fs            = require('fs');
-const path          = require('path');
-const EventEmitter  = require('events');
-const util          = require('util');
-const ntQueue       = require('@ntlab/ntlib/queue');
-const ntWork        = require('@ntlab/ntlib/work');
-const ntUtil        = require('@ntlab/ntlib/util');
-const ntLogger      = require('@ntlab/ntlib/logger');
-const { ntAtDriver, ntAtDriverConstants } = require('./at-driver');
+const EventEmitter = require('events');
+const path = require('path');
+const util = require('util');
+const { Queue, Work } = require('@ntlab/work');
+const ntutil = require('@ntlab/ntlib/util');
+const Logger = require('@ntlab/ntlib/logger');
+const { AtDriver, AtDriverConstants } = require('./at-driver');
 
 /**
  * AT modem handles AT commands with underlying stream.
  */
-class ntAtModem extends EventEmitter {
+class AtModem extends EventEmitter {
 
     constructor(name, stream, config) {
         super();
@@ -43,10 +41,10 @@ class ntAtModem extends EventEmitter {
         this.name = name;
         this.logdir = this.getConfig('logdir', path.join(__dirname, '..', 'logs'));
         this.logfile = path.join(this.logdir, this.name + '.log');
-        this.logger = new ntLogger(this.logfile);
+        this.logger = new Logger(this.logfile);
         this.responses = [];
         this.stream = stream;
-        this.stream.on('data', (data) => {
+        this.stream.on('data', data => {
             this.rx(data);
         });
         this.props = {};
@@ -65,7 +63,7 @@ class ntAtModem extends EventEmitter {
     }
 
     useDriver(name) {
-        let driver = ntAtDriver.get(name);
+        let driver = AtDriver.get(name);
         if (typeof driver == 'undefined') {
             throw new Error('Unknown driver ' + name);
         }
@@ -73,18 +71,18 @@ class ntAtModem extends EventEmitter {
     }
 
     detect() {
-        return ntWork.works([
-            () => Promise.resolve(this.useDriver('Generic')),
-            () => new Promise((resolve, reject) => {
+        return Work.works([
+            w => Promise.resolve(this.useDriver('Generic')),
+            w => new Promise((resolve, reject) => {
                 this.tx('AT', {timeout: 1000})
                     .then(() => resolve())
                     .catch(() => reject(util.format('%s: not an AT modem.', this.name)))
                 ;
             }),
-            () => new Promise((resolve, reject) => {
-                this.tx(this.getCmd(ntAtDriverConstants.AT_CMD_Q_FRIENDLY_NAME))
-                    .then((result) => {
-                        let driver = ntAtDriver.match(result.res());
+            w => new Promise((resolve, reject) => {
+                this.tx(this.getCmd(AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME))
+                    .then(result => {
+                        let driver = AtDriver.match(result.res());
                         driver = driver.length ? driver : this.driver.name;
                         if (driver.length) {
                             this.detected = true;
@@ -108,7 +106,7 @@ class ntAtModem extends EventEmitter {
     setState(state) {
         Object.assign(this.status, state);
         let isIdle = true;
-        Object.values(this.status).forEach((value) => {
+        Object.values(this.status).forEach(value => {
             if (value == true) {
                 isIdle = false;
                 return true;
@@ -117,7 +115,7 @@ class ntAtModem extends EventEmitter {
         if (this.idle != isIdle) {
             this.idle = isIdle;
             const states = [];
-            Object.keys(this.status).forEach((state) => {
+            Object.keys(this.status).forEach(state => {
                 if (this.status[state] == true) {
                     states.push(state);
                 }
@@ -135,7 +133,7 @@ class ntAtModem extends EventEmitter {
 
     rx(data) {
         if (!this.status.busy) {
-            data = ntUtil.cleanEol(data);
+            data = ntutil.cleanEol(data);
             this.log('RX> %s', data);
             this.recv(data);
         }
@@ -150,7 +148,7 @@ class ntAtModem extends EventEmitter {
                 const params = {};
                 if (options.expect) params.expect = options.expect;
                 if (options.ignore) params.ignore = options.ignore;
-                const txres = new ntAtResponse(this, params);
+                const txres = new AtResponse(this, params);
                 // set data for error handler
                 txres.data = data;
                 const t = () => {
@@ -159,12 +157,12 @@ class ntAtModem extends EventEmitter {
                     txres.timeout = true;
                     reject(txres);
                 }
-                const f = (buffer) => {
+                const f = buffer => {
                     if (timeout) {
                         clearTimeout(timeout);
                         timeout = null;
                     }
-                    buffer = ntUtil.cleanEol(buffer);
+                    buffer = ntutil.cleanEol(buffer);
                     this.log('RX> %s', buffer);
                     if (txres.check(buffer)) {
                         this.setState({busy: false});
@@ -186,7 +184,7 @@ class ntAtModem extends EventEmitter {
                     this.debug('!!! %s: Timeout threshold reached, modem may be unresponsive. Try to restart', this.name);
                 }
                 this.log('TX> %s', data);
-                this.stream.write(data + this.getCmd(ntAtDriverConstants.AT_PARAM_TERMINATOR), (err) => {
+                this.stream.write(data + this.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR), err => {
                     if (err) {
                         this.log('ERR> %s', err.message);
                         return reject(err);
@@ -202,16 +200,16 @@ class ntAtModem extends EventEmitter {
 
     txqueue(queues) {
         return new Promise((resolve, reject) => {
-            const q = new ntQueue(queues, (data) => {
+            const q = new Queue(queues, data => {
                 let cmd = Array.isArray(data) ? data[0] : data;
                 let vars = Array.isArray(data) ? data[1] : null;
                 this.tx(this.getCmd(cmd, vars))
-                    .then((res) => {
+                    .then(res => {
                         if (!q.responses) q.responses = {};
                         q.responses[cmd] = res;
                         q.next();
                     })
-                    .catch(() => q.next())
+                    .catch(err => q.next())
                 ;
             });
             q.once('done', () => {
@@ -244,11 +242,11 @@ class ntAtModem extends EventEmitter {
             // replace place holder
             let replacements = {'NONE': '', 'CR': '\r', 'LF': '\n'};
             if (vars) {
-                Object.keys(vars).forEach((key) => {
+                Object.keys(vars).forEach(key => {
                     replacements[key] = vars[key];
                 });
             }
-            return ntUtil.trans(cmd, replacements);
+            return ntutil.trans(cmd, replacements);
         }
     }
 
@@ -282,18 +280,26 @@ class ntAtModem extends EventEmitter {
         } else {
             console.log.apply(null, args);
         }
+        this.createDebugger.apply(null, args);
     }
-}
+
+    createDebugger() {
+        if (this.debugger == undefined) {
+            this.debugger = require('debug')('at-modem:' + this.name);
+        }
+        return this.debugger;
+    }
+ }
 
 /**
  * AT response data.
  */
-class ntAtResponse {
+class AtResponse {
 
     /**
      * Constructor.
      *
-     * @param {ntAtModem} parent 
+     * @param {AtModem} parent 
      * @param {Object} options 
      */
     constructor(parent, options) {
@@ -315,7 +321,7 @@ class ntAtResponse {
         const responses = [];
         Array.prototype.push.apply(responses, this.responses);
         Array.prototype.push.apply(responses,
-            this.clean(response.split(this.parent.getCmd(ntAtDriverConstants.AT_PARAM_TERMINATOR))));
+            this.clean(response.split(this.parent.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR))));
         if (!result && this.isExpected(responses)) {
             result = true;
         }
@@ -352,7 +358,7 @@ class ntAtResponse {
             i++;
         }
         if (responses.length) {
-            this.extras = responses.join(this.parent.getCmd(ntAtDriverConstants.AT_PARAM_TERMINATOR));
+            this.extras = responses.join(this.parent.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR));
         }
     }
 
@@ -408,7 +414,7 @@ class ntAtResponse {
     }
 
     isOkay(responses) {
-        const commands = [ntAtDriverConstants.AT_RESPONSE_OK];
+        const commands = [AtDriverConstants.AT_RESPONSE_OK];
         if (this.getMatch(responses, commands)) {
             this.okay = true;
         }
@@ -417,15 +423,15 @@ class ntAtResponse {
 
     isError(responses) {
         const commands = [
-            ntAtDriverConstants.AT_RESPONSE_ERROR,
-            ntAtDriverConstants.AT_RESPONSE_NO_CARRIER,
-            ntAtDriverConstants.AT_RESPONSE_NOT_SUPPORTED,
-            ntAtDriverConstants.AT_RESPONSE_CME_ERROR,
-            ntAtDriverConstants.AT_RESPONSE_CMS_ERROR,
+            AtDriverConstants.AT_RESPONSE_ERROR,
+            AtDriverConstants.AT_RESPONSE_NO_CARRIER,
+            AtDriverConstants.AT_RESPONSE_NOT_SUPPORTED,
+            AtDriverConstants.AT_RESPONSE_CME_ERROR,
+            AtDriverConstants.AT_RESPONSE_CMS_ERROR,
         ];
         if (this.getMatch(responses, commands)) {
-            if ([ntAtDriverConstants.AT_RESPONSE_CME_ERROR,
-                    ntAtDriverConstants.AT_RESPONSE_CMS_ERROR]
+            if ([AtDriverConstants.AT_RESPONSE_CME_ERROR,
+                    AtDriverConstants.AT_RESPONSE_CMS_ERROR]
                     .indexOf(this.match.matched) >= 0) {
                 this.excludeMatch = false;
             }
@@ -486,6 +492,6 @@ class ntAtResponse {
 }
 
 module.exports = {
-    ntAtModem: ntAtModem,
-    ntAtResponse: ntAtResponse,
+    AtModem: AtModem,
+    AtResponse: AtResponse,
 }

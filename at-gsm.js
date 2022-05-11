@@ -1,10 +1,10 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2020 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2018-2022 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
+ * this software and associated documeAtion files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
  * of the Software, and to permit persons to whom the Software is furnished to do
@@ -22,28 +22,25 @@
  * SOFTWARE.
  */
 
-const crypto        = require('crypto');
-const fs            = require('fs');
-const util          = require('util');
-const moment        = require('moment');
-const ntQueue       = require('@ntlab/ntlib/queue');
-const ntWork        = require('@ntlab/ntlib/work');
-const ntAtConst     = require('./at-const');
-const { ntAtDriverConstants } = require('./at-driver');
-const { ntAtModem, ntAtResponse } = require('./at-modem');
-const { ntAtProcessor, ntAtProcessorData } = require('./at-processor');
-const { ntAtSms, ntAtSmsMessage, ntAtSmsStatusReport } = require('./at-sms');
+const fs = require('fs');
+const util = require('util');
+const { Queue, Work } = require('@ntlab/work');
+const AtConst = require('./at-const');
+const { AtDriverConstants } = require('./at-driver');
+const { AtModem, AtResponse } = require('./at-modem');
+const { AtProcessor, AtProcessorData } = require('./at-processor');
+const { AtSms, AtSmsMessage, AtSmsStatusReport } = require('./at-sms');
 
 let msgref = 0;
 
 /**
  * AT GSM handles send and receive text message, and other GSM functionalities.
  */
-class ntAtGsm extends ntAtModem {
+class AtGsm extends AtModem {
 
     constructor(name, stream, config) {
         super(name, stream, config);
-        this.processor = new ntAtProcessor(this);
+        this.processor = new AtProcessor(this);
         this.info = {};
         this.messages = [];
         this.options = {
@@ -90,23 +87,23 @@ class ntAtGsm extends ntAtModem {
     }
 
     initialize() {
-        return ntWork.works([
-            () => this.doInitialize(),
-            () => this.doQueryInfo(),
-            () => this.getCharset(),
-            () => this.getSmsMode(),
-            () => this.applyDefaultStorage(),
-            () => this.getSMSC(),
-            () => this.getNetwork(),
-            () => this.attachSignalMonitor(),
-            () => this.attachMemfullMonitor()
+        return Work.works([
+            w => this.doInitialize(),
+            w => this.doQueryInfo(),
+            w => this.getCharset(),
+            w => this.getSmsMode(),
+            w => this.applyDefaultStorage(),
+            w => this.getSMSC(),
+            w => this.getNetwork(),
+            w => this.attachSignalMonitor(),
+            w => this.attachMemfullMonitor()
         ]);
     }
 
     doInitialize() {
-        const queues = [ntAtDriverConstants.AT_CMD_INIT];
+        const queues = [AtDriverConstants.AT_CMD_INIT];
         for (let i = 1; i < 10; i++) {
-            queues.push(ntAtDriverConstants.AT_CMD_INIT + i.toString());
+            queues.push(AtDriverConstants.AT_CMD_INIT + i.toString());
         }
         return this.txqueue(queues);
     }
@@ -115,36 +112,37 @@ class ntAtGsm extends ntAtModem {
         return new Promise((resolve, reject) => {
             this.txqueue([
                 // information
-                ntAtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
-                ntAtDriverConstants.AT_CMD_Q_MANUFACTURER,
-                ntAtDriverConstants.AT_CMD_Q_MODEL,
-                ntAtDriverConstants.AT_CMD_Q_VERSION,
-                ntAtDriverConstants.AT_CMD_Q_IMEI,
-                ntAtDriverConstants.AT_CMD_Q_IMSI,
+                AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
+                AtDriverConstants.AT_CMD_Q_MANUFACTURER,
+                AtDriverConstants.AT_CMD_Q_MODEL,
+                AtDriverConstants.AT_CMD_Q_VERSION,
+                AtDriverConstants.AT_CMD_Q_IMEI,
+                AtDriverConstants.AT_CMD_Q_IMSI,
                 // features
-                ntAtDriverConstants.AT_CMD_CALL_MONITOR,
-                ntAtDriverConstants.AT_CMD_SMS_MONITOR,
-                ntAtDriverConstants.AT_CMD_USSD_SET,
+                AtDriverConstants.AT_CMD_CALL_MONITOR,
+                AtDriverConstants.AT_CMD_SMS_MONITOR,
+                AtDriverConstants.AT_CMD_USSD_SET,
                 // charsets
-                ntAtDriverConstants.AT_CMD_CHARSET_LIST
+                AtDriverConstants.AT_CMD_CHARSET_LIST
             ])
-                .then((res) => {
+                .then(res => {
                     Object.assign(this.info, this.getResult({
-                        friendlyName: ntAtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
-                        manufacturer: ntAtDriverConstants.AT_CMD_Q_MANUFACTURER,
-                        model: ntAtDriverConstants.AT_CMD_Q_MODEL,
-                        version: ntAtDriverConstants.AT_CMD_Q_VERSION,
-                        serial: ntAtDriverConstants.AT_CMD_Q_IMEI,
-                        imsi: ntAtDriverConstants.AT_CMD_Q_IMSI}, res));
+                        friendlyName: AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
+                        manufacturer: AtDriverConstants.AT_CMD_Q_MANUFACTURER,
+                        model: AtDriverConstants.AT_CMD_Q_MODEL,
+                        version: AtDriverConstants.AT_CMD_Q_VERSION,
+                        serial: AtDriverConstants.AT_CMD_Q_IMEI,
+                        imsi: AtDriverConstants.AT_CMD_Q_IMSI}, res));
                     Object.assign(this.info, this.getResult({
-                        hasCall: ntAtDriverConstants.AT_CMD_CALL_MONITOR,
-                        hasSms: ntAtDriverConstants.AT_CMD_SMS_MONITOR,
-                        hasUssd: ntAtDriverConstants.AT_CMD_USSD_SET}, res, true));
-                    if (res[ntAtDriverConstants.AT_CMD_CHARSET_LIST] && res[ntAtDriverConstants.AT_CMD_CHARSET_LIST].hasResponse()) {
-                        this.doProcess(res[ntAtDriverConstants.AT_CMD_CHARSET_LIST].responses);
+                        hasCall: AtDriverConstants.AT_CMD_CALL_MONITOR,
+                        hasSms: AtDriverConstants.AT_CMD_SMS_MONITOR,
+                        hasUssd: AtDriverConstants.AT_CMD_USSD_SET}, res, true));
+                    if (res[AtDriverConstants.AT_CMD_CHARSET_LIST] && res[AtDriverConstants.AT_CMD_CHARSET_LIST].hasResponse()) {
+                        this.doProcess(res[AtDriverConstants.AT_CMD_CHARSET_LIST].responses);
                     }
                     resolve();
-                }).catch(() => reject())
+                })
+                .catch(err => reject(err))
             ;
         });
     }
@@ -164,15 +162,15 @@ class ntAtGsm extends ntAtModem {
     }
 
     attachSignalMonitor() {
-        return this.attachMonitor('CSQ', ntAtDriverConstants.AT_RESPONSE_RSSI, () => {
-            return this.query(this.getCmd(ntAtDriverConstants.AT_CMD_CSQ));
+        return this.attachMonitor('CSQ', AtDriverConstants.AT_RESPONSE_RSSI, () => {
+            return this.query(this.getCmd(AtDriverConstants.AT_CMD_CSQ));
         });
     }
 
     attachMemfullMonitor() {
-        return this.attachMonitor('MEMFULL', ntAtDriverConstants.AT_RESPONSE_MEM_FULL, () => {
+        return this.attachMonitor('MEMFULL', AtDriverConstants.AT_RESPONSE_MEM_FULL, () => {
             if (!this.memfullProcessing) {
-                return this.query(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_STORAGE_GET));
+                return this.query(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET));
             }
         });
     }
@@ -182,7 +180,7 @@ class ntAtGsm extends ntAtModem {
             let data;
             this.setState({processing: true});
             try {
-                data = new ntAtProcessorData(this, response);
+                data = new AtProcessorData(this, response);
                 this.processor.process(data);
                 if (data.unprocessed && data.unprocessed.length) {
                     // in some case, on WAVECOM modem, sometime response is not properly
@@ -192,8 +190,8 @@ class ntAtGsm extends ntAtModem {
                         data = nextdata;
                     }
                 }
-            } catch (e) {
-                this.debug('!!! %s: %s', this.name, e.stack ? e.stack : e.message);
+            } catch (err) {
+                this.debug('!!! %s: %s', this.name, err.stack ? err.stack : err.message);
             }
             this.setState({processing: false});
             return data;
@@ -210,7 +208,7 @@ class ntAtGsm extends ntAtModem {
                 for (let j = i + 1; j < unprocessed.length; j++) {
                     response += unprocessed[j];
                     if (response.length) {
-                        nextdata = new ntAtProcessorData(this, response);
+                        nextdata = new AtProcessorData(this, response);
                         handler = this.processor.handler(nextdata);
                         if (handler.length) {
                             resolved = i;
@@ -227,7 +225,7 @@ class ntAtGsm extends ntAtModem {
             if (len > 0) {
                 unprocessed.splice(resolved + 1, len);
             }
-            nextdata = new ntAtProcessorData(this, unprocessed);
+            nextdata = new AtProcessorData(this, unprocessed);
             this.processor.process(nextdata);
             if (nextdata.result) {
                 result = nextdata;
@@ -307,7 +305,7 @@ class ntAtGsm extends ntAtModem {
     }
 
     processQueues(queues) {
-        queues.forEach((queue) => {
+        queues.forEach(queue => {
             switch (queue.op) {
                 case 'read':
                     this.readStorage(queue.storage, queue.index);
@@ -341,17 +339,17 @@ class ntAtGsm extends ntAtModem {
 
     doQueue(data) {
         if (!this.q) {
-            const next = (success) => {
+            const next = success => {
                 this.debug('%s: Queue %s [%s]', this.name, this.queue.info, success ? 'OK' : 'FAILED');
                 this.queue = null;
                 this.q.pending = false;
                 this.q.next();
             }
-            this.q = new ntQueue([data], (queue) => {
+            this.q = new Queue([data], queue => {
                 this.q.pending = true;
                 this.queue = queue;
                 queue.work()
-                    .then((res) => {
+                    .then(res => {
                         if (res != undefined) {
                             queue.resolve(res);
                         } else {
@@ -359,7 +357,7 @@ class ntAtGsm extends ntAtModem {
                         }
                         next(true);
                     })
-                    .catch((err) => {
+                    .catch(err => {
                         queue.reject(err);
                         next(false);
                     })
@@ -394,11 +392,11 @@ class ntAtGsm extends ntAtModem {
             let nextIndex = null;
             let report = false;
             let msg = this.messages[index].message;
-            if (msg instanceof ntAtSmsStatusReport) {
+            if (msg instanceof AtSmsStatusReport) {
                 report = true;
                 nextIndex = this.processReport(index, msg);
             }
-            if (msg instanceof ntAtSmsMessage) {
+            if (msg instanceof AtSmsMessage) {
                 nextIndex = this.processSMS(index, msg);
             }
             if (nextIndex != null) {
@@ -440,7 +438,7 @@ class ntAtGsm extends ntAtModem {
                 parts[pos] = msg;
                 for (let i = pos + 1; i < this.messages.length; i++) {
                     let nmsg = this.messages[i].message;
-                    if (!(nmsg instanceof ntAtSmsMessage)) continue;
+                    if (!(nmsg instanceof AtSmsMessage)) continue;
                     // record non long messages in case the messages parts is still missing
                     if (nextPos == null && nmsg.getReference() == null) {
                         nextPos = i;
@@ -459,13 +457,13 @@ class ntAtGsm extends ntAtModem {
                     let address = null;
                     let time = null;
                     let content = '';
-                    msg.forEach((message) => {
+                    msg.forEach(message => {
                         if (null == address) address = message.address;
                         if (null == time) time = message.time;
                         content += message.message;
                     });
                     const hash = this.getHash(time, this.intlNumber(address), content);
-                    msg.forEach((message) => {
+                    msg.forEach(message => {
                         message.hash = hash;
                     });
                 }
@@ -510,8 +508,8 @@ class ntAtGsm extends ntAtModem {
                     msgref: nextRef
                 }));
             }
-            catch (e) {
-                console.log(e);
+            catch (err) {
+                console.error(err);
             }
         } else {
             result = msgref;
@@ -527,9 +525,9 @@ class ntAtGsm extends ntAtModem {
         if (args.length && args[0] instanceof Date) {
             dt = args.shift();
         }
-        const values = [this.props.smsc, moment(dt).format('YYYYMMDDHHmmssSSS')];
+        const values = [this.props.smsc, dt.toISOString()];
         Array.prototype.push.apply(values, args);
-        const shasum = crypto.createHash('sha1');
+        const shasum = require('crypto').createHash('sha1');
         shasum.update(values.join(''));
         return shasum.digest('hex');
     }
@@ -571,20 +569,20 @@ class ntAtGsm extends ntAtModem {
 
     encodeUssd(enc, value) {
         switch (enc) {
-            case ntAtConst.USSD_ENC_7BIT:
-                return ntAtSms.gsmEncode7Bit(value);
-            case ntAtConst.USSD_ENC_UCS2:
-                return ntAtSms.gsmEncodeUcs2(value);
+            case AtConst.USSD_ENC_7BIT:
+                return AtSms.gsmEncode7Bit(value);
+            case AtConst.USSD_ENC_UCS2:
+                return AtSms.gsmEncodeUcs2(value);
         }
         return value;
     }
 
     decodeUssd(enc, value) {
         switch (enc) {
-            case ntAtConst.USSD_ENC_7BIT:
-                return ntAtSms.gsmDecode7Bit(value);
-            case ntAtConst.USSD_ENC_UCS2:
-                return ntAtSms.gsmDecodeUcs2(value);
+            case AtConst.USSD_ENC_7BIT:
+                return AtSms.gsmDecode7Bit(value);
+            case AtConst.USSD_ENC_UCS2:
+                return AtSms.gsmDecodeUcs2(value);
         }
         return value;
     }
@@ -599,7 +597,7 @@ class ntAtGsm extends ntAtModem {
         return new Promise((resolve, reject) => {
             const storage = this.saveStorage(cmd);
             this.tx(cmd, options)
-                .then((res) => {
+                .then(res => {
                     let data;
                     if (Object.keys(storage).length) {
                         Object.assign(this.props, storage);
@@ -616,9 +614,9 @@ class ntAtGsm extends ntAtModem {
                     } else {
                         resolve();
                     }
-                }).catch((err) => {
+                }).catch(err => {
                     let msg = err;
-                    if (err instanceof ntAtResponse) {
+                    if (err instanceof AtResponse) {
                         if (err.timeout) {
                             msg = util.format('%s: Operation timeout', err.data);
                         }
@@ -640,17 +638,17 @@ class ntAtGsm extends ntAtModem {
 
     findMatchedCommand(data, cmd, patterns) {
         const vars = {};
-        Object.keys(patterns).forEach((key) => {
+        Object.keys(patterns).forEach(key => {
             vars[key] = '_' + key + '_';
         });
         const f = (str, search, replace) => {
             return str.replace(search, replace);
         }
         let str = this.getCmd(cmd, vars);
-        ['+', '='].forEach((escape) => {
+        ['+', '='].forEach(escape => {
             str = f(str, escape, '\\' + escape);
         });
-        Object.keys(patterns).forEach((key) => {
+        Object.keys(patterns).forEach(key => {
             str = f(str, '_' + key + '_', patterns[key]);
         });
         const re = new RegExp(str);
@@ -662,11 +660,11 @@ class ntAtGsm extends ntAtModem {
 
     saveStorage(cmd) {
         const result = {};
-        const storage = this.findMatchedCommand(cmd, ntAtDriverConstants.AT_CMD_SMS_STORAGE_SET, {STORAGE: '([A-Z]+)'});
+        const storage = this.findMatchedCommand(cmd, AtDriverConstants.AT_CMD_SMS_STORAGE_SET, {STORAGE: '([A-Z]+)'});
         if (storage != undefined) {
             result.storage = storage;
         }
-        const storageIndex = this.findMatchedCommand(cmd, ntAtDriverConstants.AT_CMD_SMS_READ, {SMS_ID: '(\\d+)'});
+        const storageIndex = this.findMatchedCommand(cmd, AtDriverConstants.AT_CMD_SMS_READ, {SMS_ID: '(\\d+)'});
         if (storageIndex != undefined) {
             result.storageIndex = parseInt(storageIndex);
         }
@@ -680,11 +678,11 @@ class ntAtGsm extends ntAtModem {
             requestReply: this.options.requestMessageReply,
             flashMessage: this.options.sendMessageAsFlash
         }
-        const dcs = ntAtSms.detectCodingScheme(message);
-        const messages = ntAtSms.smsSplit(dcs, message);
+        const dcs = AtSms.detectCodingScheme(message);
+        const messages = AtSms.smsSplit(dcs, message);
         let reference = messages.length > 1 ? this.getMessageReference() : null;
         for (let index = 0; index < messages.length; index++) {
-            let msg = new ntAtSmsMessage();
+            let msg = new AtSmsMessage();
             msg.dcs = dcs;
             msg.address = phoneNumber;
             if (messages.length > 1) {
@@ -704,27 +702,27 @@ class ntAtGsm extends ntAtModem {
             msg.hash = hash;
             queues.push(msg);
         }
-        const prompt = this.getCmd(ntAtDriverConstants.AT_RESPONSE_SMS_PROMPT);
-        const waitPrompt = 1 == parseInt(this.getCmd(ntAtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT)) ? true : false;
+        const prompt = this.getCmd(AtDriverConstants.AT_RESPONSE_SMS_PROMPT);
+        const waitPrompt = 1 == parseInt(this.getCmd(AtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT)) ? true : false;
         const works = [
-            () => this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_MODE_SET, {SMS_MODE: ntAtConst.SMS_MODE_PDU})),
+            w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_MODE_SET, {SMS_MODE: AtConst.SMS_MODE_PDU})),
         ];
-        queues.forEach((msg) => {
+        queues.forEach(msg => {
             const params = {
                 SMS_LEN: msg.tplen,
                 MESSAGE: msg.pdu,
-                COMMIT: this.getCmd(ntAtDriverConstants.AT_PARAM_SMS_COMMIT)
+                COMMIT: this.getCmd(AtDriverConstants.AT_PARAM_SMS_COMMIT)
             }
             if (waitPrompt) {
-                works.push(() => this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_SEND_PDU, params), {
+                works.push(w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_SEND_PDU, params), {
                     expect: prompt
                 }));
-                works.push(() => this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_SEND_COMMIT, params), {
+                works.push(w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_SEND_COMMIT, params), {
                     timeout: this.sendTimeout,
                     context: msg
                 }));
             } else {
-                works.push(() => this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_SEND_PDU, params), {
+                works.push(w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_SEND_PDU, params), {
                     ignore: prompt,
                     timeout: this.sendTimeout,
                     context: msg
@@ -732,7 +730,7 @@ class ntAtGsm extends ntAtModem {
             }
         });
         return this.addQueue({name: 'sendPDU', destination: phoneNumber, message: message}, () => new Promise((resolve, reject) => {
-            const done = (success) => {
+            const done = success => {
                 this.setState({sending: false});
                 this.emit('pdu', success, queues);
                 if (success) {
@@ -742,7 +740,7 @@ class ntAtGsm extends ntAtModem {
                 }
             }
             this.setState({sending: true});
-            ntWork.works(works)
+            Work.works(works)
                 .then(() => done(true))
                 .catch(() => done(false))
             ;
@@ -757,12 +755,12 @@ class ntAtGsm extends ntAtModem {
             return Promise.resolve();
         }
         return new Promise((resolve, reject) => {
-            this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_STORAGE_SET, {STORAGE: storage}))
-                .then((res) => {
+            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_SET, {STORAGE: storage}))
+                .then(res => {
                     this.props.storage = storage;
                     resolve();
                 })
-                .catch((err) => reject(err))
+                .catch(err => reject(err))
             ;
         });
     }
@@ -772,21 +770,21 @@ class ntAtGsm extends ntAtModem {
             return this.addQueue({name: 'getStorage', storage: storage}, () => this.getStorage(storage, false));
         }
         if (storage) {
-            return ntWork.works([
-                () => this.setStorage(storage, false),
-                () => this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_STORAGE_GET)),
+            return Work.works([
+                w => this.setStorage(storage, false),
+                w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET)),
             ]);
         }
-        return this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_STORAGE_GET));
+        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET));
     }
 
     readStorage(storage, index, queued = true) {
         if (queued) {
             return this.addQueue({name: 'readStorage', storage: storage, index: index}, () => this.readStorage(storage, index, false));
         }
-        return ntWork.works([
-            () => this.setStorage(storage, false),
-            () => this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_READ, {SMS_ID: index})),
+        return Work.works([
+            w => this.setStorage(storage, false),
+            w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_READ, {SMS_ID: index})),
         ]);
     }
 
@@ -794,9 +792,9 @@ class ntAtGsm extends ntAtModem {
         if (queued) {
             return this.addQueue({name: 'deleteStorage', storage: storage, index: index}, () => this.deleteStorage(storage, index, false));
         }
-        return ntWork.works([
-            () => this.setStorage(storage, false),
-            () => this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_DELETE, {SMS_ID: index})),
+        return Work.works([
+            w => this.setStorage(storage, false),
+            w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_DELETE, {SMS_ID: index})),
         ]);
     }
 
@@ -804,9 +802,9 @@ class ntAtGsm extends ntAtModem {
         if (queued) {
             return this.addQueue({name: 'emptyStorage', storage: storage}, () => this.emptyStorage(storage, false));
         }
-        return ntWork.works([
-            () => this.getStorage(storage, false),
-            () => new Promise((resolve, reject) => {
+        return Work.works([
+            w => this.getStorage(storage, false),
+            w => new Promise((resolve, reject) => {
                 // 1 based storage index
                 for (let i = 1; i <= this.props.storageTotal; i++) {
                     this.deleteStorage(storage, i);
@@ -817,31 +815,31 @@ class ntAtGsm extends ntAtModem {
     }
 
     applyDefaultStorage() {
-        return this.getStorage(this.getCmd(ntAtDriverConstants.AT_PARAM_SMS_STORAGE));
+        return this.getStorage(this.getCmd(AtDriverConstants.AT_PARAM_SMS_STORAGE));
     }
 
     getCharset() {
-        return this.query(this.getCmd(ntAtDriverConstants.AT_CMD_CHARSET_GET));
+        return this.query(this.getCmd(AtDriverConstants.AT_CMD_CHARSET_GET));
     }
 
     setCharset(charset) {
-        return this.query(this.getCmd(ntAtDriverConstants.AT_CMD_CHARSET_SET, {CHARSET: charset}));
+        return this.query(this.getCmd(AtDriverConstants.AT_CMD_CHARSET_SET, {CHARSET: charset}));
     }
 
     getSmsMode() {
-        return this.query(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_MODE_GET));
+        return this.query(this.getCmd(AtDriverConstants.AT_CMD_SMS_MODE_GET));
     }
 
     getSMSC() {
-        return this.query(this.getCmd(ntAtDriverConstants.AT_CMD_Q_SMSC));
+        return this.query(this.getCmd(AtDriverConstants.AT_CMD_Q_SMSC));
     }
 
     getNetwork() {
-        return this.query(this.getCmd(ntAtDriverConstants.AT_CMD_NETWORK_GET));
+        return this.query(this.getCmd(AtDriverConstants.AT_CMD_NETWORK_GET));
     }
 
     getNetworks() {
-        return this.query(this.getCmd(ntAtDriverConstants.AT_CMD_NETWORK_LIST));
+        return this.query(this.getCmd(AtDriverConstants.AT_CMD_NETWORK_LIST));
     }
 
     dial(phoneNumber, hash, queued = true) {
@@ -853,12 +851,12 @@ class ntAtGsm extends ntAtModem {
                 hash: hash ? hash : this.getHash(this.intlNumber(phoneNumber)),
                 address: phoneNumber
             }
-            this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_DIAL, {PHONE_NUMBER: phoneNumber}))
-                .then((res) => {
+            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_DIAL, {PHONE_NUMBER: phoneNumber}))
+                .then(res => {
                     this.emit('dial', true, data);
                     resolve(res);
                 })
-                .catch((err) => {
+                .catch(err => {
                     this.emit('dial', false, data);
                     reject(err);
                 })
@@ -870,14 +868,14 @@ class ntAtGsm extends ntAtModem {
         if (queued) {
             return this.addQueue({name: 'answer'}, () => this.answer(false));
         }
-        return this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_ANSWER));
+        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_ANSWER));
     }
 
     hangup(queued = false) {
         if (queued) {
             return this.addQueue({name: 'hangup'}, () => this.hangup(false));
         }
-        return this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_HANGUP));
+        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_HANGUP));
     }
 
     ussd(serviceCode, hash, queued = true) {
@@ -890,18 +888,18 @@ class ntAtGsm extends ntAtModem {
                 address: serviceCode
             }
             this.ussdCode = serviceCode;
-            const enc = parseInt(this.getCmd(ntAtDriverConstants.AT_PARAM_USSD_ENCODING));
+            const enc = parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING));
             const params = {
-                SERVICE_NUMBER: 1 == parseInt(this.getCmd(ntAtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
+                SERVICE_NUMBER: 1 == parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
                     this.encodeUssd(enc, serviceCode) : serviceCode,
                 ENC: enc
             };
-            this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_USSD_SEND, params))
-                .then((res) => {
+            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_SEND, params))
+                .then(res => {
                     this.emit('ussd-dial', true, data);
                     resolve(res);
                 })
-                .catch((err) => {
+                .catch(err => {
                     this.emit('ussd-dial', false, data);
                     reject(err);
                 })
@@ -913,21 +911,21 @@ class ntAtGsm extends ntAtModem {
         if (queued) {
             return this.addQueue({name: 'ussdCancel'}, () => this.ussdCancel(false));
         }
-        return this.doQuery(this.getCmd(ntAtDriverConstants.AT_CMD_USSD_CANCEL));
+        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_CANCEL));
     }
 
     sendMessage(phoneNumber, message, hash) {
-        switch (parseInt(this.getCmd(ntAtDriverConstants.AT_PARAM_SMS_MODE))) {
-            case ntAtConst.SMS_MODE_PDU:
+        switch (parseInt(this.getCmd(AtDriverConstants.AT_PARAM_SMS_MODE))) {
+            case AtConst.SMS_MODE_PDU:
                 return this.sendPDU(phoneNumber, message, hash);
-            case ntAtConst.SMS_MODE_TEXT:
+            case AtConst.SMS_MODE_TEXT:
                 throw new Error('SMS text mode is not supported.');
         }
     }
 
     listMessage(status) {
-        return this.query(this.getCmd(ntAtDriverConstants.AT_CMD_SMS_LIST, {SMS_STAT: status}));
+        return this.query(this.getCmd(AtDriverConstants.AT_CMD_SMS_LIST, {SMS_STAT: status}));
     }
 }
 
-module.exports = ntAtGsm;
+module.exports = AtGsm;

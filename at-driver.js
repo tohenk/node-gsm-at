@@ -1,10 +1,10 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2020 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2018-2022 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
+ * this software and associated documeAtion files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
  * of the Software, and to permit persons to whom the Software is furnished to do
@@ -22,14 +22,14 @@
  * SOFTWARE.
  */
 
-const fs         = require('fs');
-const ini        = require('ini');
-const ntAtConst  = require('./at-const');
+const fs = require('fs');
+const ini = require('ini');
+const AtConst = require('./at-const');
 
 /**
  * AT driver constants.
  */
-class ntAtDriverConstants {
+class AtDriverConstants {
 
     static get AT_PARAM_TERMINATOR()                { return 'PARAM_TERMINATOR' }
     static get AT_PARAM_DEVICE_NAME()               { return 'PARAM_DEVICE_NAME' }
@@ -110,7 +110,7 @@ class ntAtDriverConstants {
 /**
  * AT communication driver.
  */
-class ntAtDriver {
+class AtDriver {
 
     constructor(parent = null) {
         this.name = 'Generic';
@@ -125,80 +125,80 @@ class ntAtDriver {
     }
 
     init() {
-        this.add(ntAtDriverConstants.AT_PARAM_TERMINATOR,                 '%CR%%LF%');
-        this.add(ntAtDriverConstants.AT_PARAM_DEVICE_NAME,                '%MANUF% %MODEL%');
-        this.add(ntAtDriverConstants.AT_PARAM_KEYPAD_CHARSET,             '%NONE%');
-        this.add(ntAtDriverConstants.AT_PARAM_SMS_MODE,                   ntAtConst.SMS_MODE_PDU.toString());
-        this.add(ntAtDriverConstants.AT_PARAM_SMS_COMMIT,                 String.fromCharCode(0x1a));
-        this.add(ntAtDriverConstants.AT_PARAM_SMS_CANCEL,                 String.fromCharCode(0x1b));
-        this.add(ntAtDriverConstants.AT_PARAM_SMS_STORAGE,                '%NONE%');
-        this.add(ntAtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT,            '1');
-        this.add(ntAtDriverConstants.AT_PARAM_USSD_ENCODED,               '0');
-        this.add(ntAtDriverConstants.AT_PARAM_USSD_ENCODING,              ntAtConst.USSD_ENC_7BIT.toString());
-        this.add(ntAtDriverConstants.AT_PARAM_USSD_RESPONSE_ENCODED,      '0');
-        this.add(ntAtDriverConstants.AT_CMD_INIT,                         'ATZ');
-        this.add(ntAtDriverConstants.AT_CMD_INIT + '1',                   'ATE0');
-        this.add(ntAtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,              'ATI');
-        this.add(ntAtDriverConstants.AT_CMD_Q_MANUFACTURER,               'AT+CGMI');
-        this.add(ntAtDriverConstants.AT_CMD_Q_MODEL,                      'AT+CGMM');
-        this.add(ntAtDriverConstants.AT_CMD_Q_VERSION,                    'AT+CGMR');
-        this.add(ntAtDriverConstants.AT_CMD_Q_IMEI,                       'AT+CGSN');
-        this.add(ntAtDriverConstants.AT_CMD_Q_IMSI,                       'AT+CIMI');
-        this.add(ntAtDriverConstants.AT_CMD_Q_SMSC,                       'AT+CSCA?');
-        this.add(ntAtDriverConstants.AT_CMD_CALL_MONITOR,                 'AT+CLIP=1');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_MONITOR,                  'AT+CNMI=2,1,,2');
-        this.add(ntAtDriverConstants.AT_CMD_DIAL,                         'ATD%PHONE_NUMBER%;');
-        this.add(ntAtDriverConstants.AT_CMD_ANSWER,                       'ATA');
-        this.add(ntAtDriverConstants.AT_CMD_HANGUP,                       'ATH');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_STORAGE_GET,              'AT+CPMS?');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_STORAGE_SET,              'AT+CPMS="%STORAGE%"');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_READ,                     'AT+CMGR=%SMS_ID%');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_DELETE,                   'AT+CMGD=%SMS_ID%');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_LIST,                     'AT+CMGL=%SMS_STAT%');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_MODE_GET,                 'AT+CMGF?');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_MODE_SET,                 'AT+CMGF=%SMS_MODE%');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_SEND_PDU,                 'AT+CMGS=%SMS_LEN%');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_SEND_TEXT,                'AT+CMGS="%PHONE_NUMBER%"');
-        this.add(ntAtDriverConstants.AT_CMD_SMS_SEND_COMMIT,              '%MESSAGE%%COMMIT%');
-        this.add(ntAtDriverConstants.AT_CMD_USSD_SET,                     'AT+CUSD=1');
-        this.add(ntAtDriverConstants.AT_CMD_USSD_CANCEL,                  'AT+CUSD=2');
-        this.add(ntAtDriverConstants.AT_CMD_USSD_SEND,                    'AT+CUSD=1,%SERVICE_NUMBER%,%ENC%');
-        this.add(ntAtDriverConstants.AT_CMD_KEYPAD,                       'AT+CKPD="%KEYS%"');
-        this.add(ntAtDriverConstants.AT_CMD_KEYPAD_ACCESS,                'AT+CMEC=2');
-        this.add(ntAtDriverConstants.AT_CMD_KEYPAD_LOCK,                  'AT+CLCK="CS",%VALUE%');
-        this.add(ntAtDriverConstants.AT_CMD_CSQ,                          'AT+CSQ');
-        this.add(ntAtDriverConstants.AT_CMD_CHARSET_LIST,                 'AT+CSCS=?');
-        this.add(ntAtDriverConstants.AT_CMD_CHARSET_GET,                  'AT+CSCS?');
-        this.add(ntAtDriverConstants.AT_CMD_CHARSET_SET,                  'AT+CSCS="%CHARSET%"');
-        this.add(ntAtDriverConstants.AT_CMD_NETWORK_LIST,                 'AT+COPS=?');
-        this.add(ntAtDriverConstants.AT_CMD_NETWORK_GET,                  'AT+COPS?');
-        this.add(ntAtDriverConstants.AT_RESPONSE_OK,                      'OK');
-        this.add(ntAtDriverConstants.AT_RESPONSE_ERROR,                   'ERROR');
-        this.add(ntAtDriverConstants.AT_RESPONSE_RING,                    'RING');
-        this.add(ntAtDriverConstants.AT_RESPONSE_NO_CARRIER,              'NO CARRIER');
-        this.add(ntAtDriverConstants.AT_RESPONSE_NOT_SUPPORTED,           'COMMAND NOT SUPPORT');
-        this.add(ntAtDriverConstants.AT_RESPONSE_SMSC,                    '+CSCA:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_SMS_PROMPT,              '> ');
-        this.add(ntAtDriverConstants.AT_RESPONSE_NEW_MESSAGE,             '+CMTI:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_NEW_MESSAGE_DIRECT,      '+CMT:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_DELIVERY_REPORT,         '+CDSI:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT,  '+CDS:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CPMS,                    '+CPMS:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMGF,                    '+CMGF:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMGR,                    '+CMGR:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMGL,                    '+CMGL:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMGS,                    '+CMGS:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CLIP,                    '+CLIP:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CUSD,                    '+CUSD:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CSCS,                    '+CSCS:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CLCK,                    '+CLCK:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CSQ,                     '+CSQ:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_RSSI,                    '%NONE%');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CALL_END,                '%NONE%');
-        this.add(ntAtDriverConstants.AT_RESPONSE_COPS,                    '+COPS:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_MEM_FULL,                '%NONE%');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CME_ERROR,               '+CME ERROR:');
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMS_ERROR,               '+CMS ERROR:');
+        this.add(AtDriverConstants.AT_PARAM_TERMINATOR,                 '%CR%%LF%');
+        this.add(AtDriverConstants.AT_PARAM_DEVICE_NAME,                '%MANUF% %MODEL%');
+        this.add(AtDriverConstants.AT_PARAM_KEYPAD_CHARSET,             '%NONE%');
+        this.add(AtDriverConstants.AT_PARAM_SMS_MODE,                   AtConst.SMS_MODE_PDU.toString());
+        this.add(AtDriverConstants.AT_PARAM_SMS_COMMIT,                 String.fromCharCode(0x1a));
+        this.add(AtDriverConstants.AT_PARAM_SMS_CANCEL,                 String.fromCharCode(0x1b));
+        this.add(AtDriverConstants.AT_PARAM_SMS_STORAGE,                '%NONE%');
+        this.add(AtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT,            '1');
+        this.add(AtDriverConstants.AT_PARAM_USSD_ENCODED,               '0');
+        this.add(AtDriverConstants.AT_PARAM_USSD_ENCODING,              AtConst.USSD_ENC_7BIT.toString());
+        this.add(AtDriverConstants.AT_PARAM_USSD_RESPONSE_ENCODED,      '0');
+        this.add(AtDriverConstants.AT_CMD_INIT,                         'ATZ');
+        this.add(AtDriverConstants.AT_CMD_INIT + '1',                   'ATE0');
+        this.add(AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,              'ATI');
+        this.add(AtDriverConstants.AT_CMD_Q_MANUFACTURER,               'AT+CGMI');
+        this.add(AtDriverConstants.AT_CMD_Q_MODEL,                      'AT+CGMM');
+        this.add(AtDriverConstants.AT_CMD_Q_VERSION,                    'AT+CGMR');
+        this.add(AtDriverConstants.AT_CMD_Q_IMEI,                       'AT+CGSN');
+        this.add(AtDriverConstants.AT_CMD_Q_IMSI,                       'AT+CIMI');
+        this.add(AtDriverConstants.AT_CMD_Q_SMSC,                       'AT+CSCA?');
+        this.add(AtDriverConstants.AT_CMD_CALL_MONITOR,                 'AT+CLIP=1');
+        this.add(AtDriverConstants.AT_CMD_SMS_MONITOR,                  'AT+CNMI=2,1,,2');
+        this.add(AtDriverConstants.AT_CMD_DIAL,                         'ATD%PHONE_NUMBER%;');
+        this.add(AtDriverConstants.AT_CMD_ANSWER,                       'ATA');
+        this.add(AtDriverConstants.AT_CMD_HANGUP,                       'ATH');
+        this.add(AtDriverConstants.AT_CMD_SMS_STORAGE_GET,              'AT+CPMS?');
+        this.add(AtDriverConstants.AT_CMD_SMS_STORAGE_SET,              'AT+CPMS="%STORAGE%"');
+        this.add(AtDriverConstants.AT_CMD_SMS_READ,                     'AT+CMGR=%SMS_ID%');
+        this.add(AtDriverConstants.AT_CMD_SMS_DELETE,                   'AT+CMGD=%SMS_ID%');
+        this.add(AtDriverConstants.AT_CMD_SMS_LIST,                     'AT+CMGL=%SMS_STAT%');
+        this.add(AtDriverConstants.AT_CMD_SMS_MODE_GET,                 'AT+CMGF?');
+        this.add(AtDriverConstants.AT_CMD_SMS_MODE_SET,                 'AT+CMGF=%SMS_MODE%');
+        this.add(AtDriverConstants.AT_CMD_SMS_SEND_PDU,                 'AT+CMGS=%SMS_LEN%');
+        this.add(AtDriverConstants.AT_CMD_SMS_SEND_TEXT,                'AT+CMGS="%PHONE_NUMBER%"');
+        this.add(AtDriverConstants.AT_CMD_SMS_SEND_COMMIT,              '%MESSAGE%%COMMIT%');
+        this.add(AtDriverConstants.AT_CMD_USSD_SET,                     'AT+CUSD=1');
+        this.add(AtDriverConstants.AT_CMD_USSD_CANCEL,                  'AT+CUSD=2');
+        this.add(AtDriverConstants.AT_CMD_USSD_SEND,                    'AT+CUSD=1,%SERVICE_NUMBER%,%ENC%');
+        this.add(AtDriverConstants.AT_CMD_KEYPAD,                       'AT+CKPD="%KEYS%"');
+        this.add(AtDriverConstants.AT_CMD_KEYPAD_ACCESS,                'AT+CMEC=2');
+        this.add(AtDriverConstants.AT_CMD_KEYPAD_LOCK,                  'AT+CLCK="CS",%VALUE%');
+        this.add(AtDriverConstants.AT_CMD_CSQ,                          'AT+CSQ');
+        this.add(AtDriverConstants.AT_CMD_CHARSET_LIST,                 'AT+CSCS=?');
+        this.add(AtDriverConstants.AT_CMD_CHARSET_GET,                  'AT+CSCS?');
+        this.add(AtDriverConstants.AT_CMD_CHARSET_SET,                  'AT+CSCS="%CHARSET%"');
+        this.add(AtDriverConstants.AT_CMD_NETWORK_LIST,                 'AT+COPS=?');
+        this.add(AtDriverConstants.AT_CMD_NETWORK_GET,                  'AT+COPS?');
+        this.add(AtDriverConstants.AT_RESPONSE_OK,                      'OK');
+        this.add(AtDriverConstants.AT_RESPONSE_ERROR,                   'ERROR');
+        this.add(AtDriverConstants.AT_RESPONSE_RING,                    'RING');
+        this.add(AtDriverConstants.AT_RESPONSE_NO_CARRIER,              'NO CARRIER');
+        this.add(AtDriverConstants.AT_RESPONSE_NOT_SUPPORTED,           'COMMAND NOT SUPPORT');
+        this.add(AtDriverConstants.AT_RESPONSE_SMSC,                    '+CSCA:');
+        this.add(AtDriverConstants.AT_RESPONSE_SMS_PROMPT,              '> ');
+        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE,             '+CMTI:');
+        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE_DIRECT,      '+CMT:');
+        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT,         '+CDSI:');
+        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT,  '+CDS:');
+        this.add(AtDriverConstants.AT_RESPONSE_CPMS,                    '+CPMS:');
+        this.add(AtDriverConstants.AT_RESPONSE_CMGF,                    '+CMGF:');
+        this.add(AtDriverConstants.AT_RESPONSE_CMGR,                    '+CMGR:');
+        this.add(AtDriverConstants.AT_RESPONSE_CMGL,                    '+CMGL:');
+        this.add(AtDriverConstants.AT_RESPONSE_CMGS,                    '+CMGS:');
+        this.add(AtDriverConstants.AT_RESPONSE_CLIP,                    '+CLIP:');
+        this.add(AtDriverConstants.AT_RESPONSE_CUSD,                    '+CUSD:');
+        this.add(AtDriverConstants.AT_RESPONSE_CSCS,                    '+CSCS:');
+        this.add(AtDriverConstants.AT_RESPONSE_CLCK,                    '+CLCK:');
+        this.add(AtDriverConstants.AT_RESPONSE_CSQ,                     '+CSQ:');
+        this.add(AtDriverConstants.AT_RESPONSE_RSSI,                    '%NONE%');
+        this.add(AtDriverConstants.AT_RESPONSE_CALL_END,                '%NONE%');
+        this.add(AtDriverConstants.AT_RESPONSE_COPS,                    '+COPS:');
+        this.add(AtDriverConstants.AT_RESPONSE_MEM_FULL,                '%NONE%');
+        this.add(AtDriverConstants.AT_RESPONSE_CME_ERROR,               '+CME ERROR:');
+        this.add(AtDriverConstants.AT_RESPONSE_CMS_ERROR,               '+CMS ERROR:');
     }
 
     import(commands) {
@@ -236,7 +236,7 @@ class ntAtDriver {
 /**
  * AT driver collection.
  */
-class ntAtDrivers {
+class AtDrivers {
 
     drivers = {}
 
@@ -254,18 +254,18 @@ class ntAtDrivers {
                 let drvDesc = key;
                 let drvParent = null;
                 // description
-                let s = ntAtDriverUtil.getNonCmdProps(items);
+                let s = AtDriverUtil.getNonCmdProps(items);
                 if (typeof s != 'undefined') {
                     drvDesc = s;
                     items = items[s];
                 }
                 // parent
-                s = ntAtDriverUtil.getNonCmdProps(items);
+                s = AtDriverUtil.getNonCmdProps(items);
                 if (typeof s != 'undefined') {
                     drvParent = this.get(s);
                     items = items[s];
                 }
-                let drv = new ntAtDriver(drvParent);
+                let drv = new AtDriver(drvParent);
                 drv.name = drvName;
                 drv.desc = drvDesc;
                 drv.import(items);
@@ -277,7 +277,7 @@ class ntAtDrivers {
     /**
      * Add driver.
      *
-     * @param {ntAtDriver} driver The driver
+     * @param {AtDriver} driver The driver
      */
     add(driver) {
         if (typeof driver.name == 'undefined') {
@@ -293,7 +293,7 @@ class ntAtDrivers {
      * Get driver.
      *
      * @param {String} name  The driver name
-     * @returns {ntAtDriver} The driver
+     * @returns {AtDriver} The driver
      */
     get(name) {
         if (typeof this.drivers[name] != 'undefined') {
@@ -307,7 +307,7 @@ class ntAtDrivers {
      * @returns {String[]}
      */
     names() {
-        return ntAtDriverUtil.getObjectProps(this.drivers);
+        return AtDriverUtil.getObjectProps(this.drivers);
     }
 
     match(s) {
@@ -331,7 +331,7 @@ class ntAtDrivers {
 /**
  * AT driver utility.
  */
-class ntAtDriverUtil {
+class AtDriverUtil {
 
     static getObjectProps(o) {
         return Object.keys(o);
@@ -349,12 +349,12 @@ class ntAtDriverUtil {
     }
 }
 
-const drivers = new ntAtDrivers();
+const drivers = new AtDrivers();
 if (typeof drivers.get('Generic') == 'undefined') {
-    drivers.add(new ntAtDriver());
+    drivers.add(new AtDriver());
 }
 
 module.exports = {
-    ntAtDriver: drivers,
-    ntAtDriverConstants: ntAtDriverConstants,
+    AtDriver: drivers,
+    AtDriverConstants: AtDriverConstants,
 }

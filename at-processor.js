@@ -1,10 +1,10 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2020 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2018-2022 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
+ * this software and associated documeAtion files (the "Software"), to deal in
  * the Software without restriction, including without limitation the rights to
  * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
  * of the Software, and to permit persons to whom the Software is furnished to do
@@ -22,21 +22,21 @@
  * SOFTWARE.
  */
 
-const ntToken       = require('@ntlab/ntlib/token');
-const { ntAtDriverConstants } = require('./at-driver');
-const { ntAtModem } = require('./at-modem');
-const { ntAtSms }   = require('./at-sms');
-const ntAtNetwork   = require('./at-network');
+const token = require('@ntlab/ntlib/token');
+const { AtDriverConstants } = require('./at-driver');
+const { AtModem } = require('./at-modem');
+const { AtSms } = require('./at-sms');
+const AtNetwork = require('./at-network');
 
 /**
  * AT GSM response processor.
  */
-class ntAtProcessor {
+class AtProcessor {
 
     /**
      * Constructor.
      *
-     * @param {ntAtModem} parent 
+     * @param {AtModem} parent 
      */
     constructor(parent) {
         this.parent = parent;
@@ -47,7 +47,7 @@ class ntAtProcessor {
     process(data) {
         const matches = this.handler(data);
         if (matches.length) {
-            matches.forEach((match) => {
+            matches.forEach(match => {
                 Object.assign(data, {
                     index: match.index,
                     code: match.code,
@@ -104,28 +104,28 @@ class ntAtProcessor {
     }
 
     register() {
-        this.add(ntAtDriverConstants.AT_RESPONSE_CME_ERROR, 1, (data) => this.handleCME(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMS_ERROR, 1, (data) => this.handleCMS(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_SMSC, 2, (data) => this.handleCSCA(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_COPS, 1, (data) => this.handleCOPS(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CSCS, 1, (data) => this.handleCSCS(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CLCK, 1, (data) => this.handleCLCK(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CSQ, 2, (data) => this.handleCSQ(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_RSSI, 1, (data) => this.handleRSSI(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_RING, 0, (data) => this.handleRING(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CLIP, 1, (data) => this.handleCLIP(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CALL_END, 1, (data) => this.handleCEND(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_NEW_MESSAGE_DIRECT, 2, (data) => this.handleCMT(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_NEW_MESSAGE, 2, (data) => this.handleCMTI(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT, 1, (data) => this.handleCDS(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_DELIVERY_REPORT, 2, (data) => this.handleCDSI(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CPMS, 3, (data) => this.handleCPMS(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMGF, 1, (data) => this.handleCMGF(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMGL, 4, (data) => this.handleCMGL(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMGR, 3, (data) => this.handleCMGR(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CMGS, 1, (data) => this.handleCMGS(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_CUSD, 1, '\n', (data) => this.handleCUSD(data));
-        this.add(ntAtDriverConstants.AT_RESPONSE_MEM_FULL, 1, (data) => this.handleMEMFULL(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CME_ERROR, 1, (data) => this.handleCME(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMS_ERROR, 1, (data) => this.handleCMS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_SMSC, 2, (data) => this.handleCSCA(data));
+        this.add(AtDriverConstants.AT_RESPONSE_COPS, 1, (data) => this.handleCOPS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CSCS, 1, (data) => this.handleCSCS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CLCK, 1, (data) => this.handleCLCK(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CSQ, 2, (data) => this.handleCSQ(data));
+        this.add(AtDriverConstants.AT_RESPONSE_RSSI, 1, (data) => this.handleRSSI(data));
+        this.add(AtDriverConstants.AT_RESPONSE_RING, 0, (data) => this.handleRING(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CLIP, 1, (data) => this.handleCLIP(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CALL_END, 1, (data) => this.handleCEND(data));
+        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE_DIRECT, 2, (data) => this.handleCMT(data));
+        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE, 2, (data) => this.handleCMTI(data));
+        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT, 1, (data) => this.handleCDS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT, 2, (data) => this.handleCDSI(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CPMS, 3, (data) => this.handleCPMS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMGF, 1, (data) => this.handleCMGF(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMGL, 4, (data) => this.handleCMGL(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMGR, 3, (data) => this.handleCMGR(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMGS, 1, (data) => this.handleCMGS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CUSD, 1, '\n', (data) => this.handleCUSD(data));
+        this.add(AtDriverConstants.AT_RESPONSE_MEM_FULL, 1, (data) => this.handleMEMFULL(data));
     }
 
     readPDU(data) {
@@ -157,18 +157,18 @@ class ntAtProcessor {
                 }
                 if (pdu.length) {
                     if (processedIndex == undefined) processedIndex = startIndex;
-                    let msg = ntAtSms.decode(pdu);
+                    let msg = AtSms.decode(pdu);
                     let tplen = tokens[len - 1];
                     this.parent.debug('%s: PDU = %s, tplen = %d, expected = %d [%s]', this.parent.name, pdu, msg.tplen, tplen,
                         msg.tplen == tplen ? 'OK' : 'SKIPPED');
                     if (msg.tplen == tplen) {
                         let storage, storageIndex, storageStatus;
                         switch (data.matched.cmd) {
-                            case ntAtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT:
+                            case AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT:
                                 break;
-                            case ntAtDriverConstants.AT_RESPONSE_NEW_MESSAGE_DIRECT:
+                            case AtDriverConstants.AT_RESPONSE_NEW_MESSAGE_DIRECT:
                                 break;
-                            case ntAtDriverConstants.AT_RESPONSE_CMGR:
+                            case AtDriverConstants.AT_RESPONSE_CMGR:
                                 if (this.parent.queue &&
                                     this.parent.queue.info &&
                                     this.parent.queue.info.storage) {
@@ -180,7 +180,7 @@ class ntAtProcessor {
                                 }
                                 storageStatus = tokens[0];
                                 break;
-                            case ntAtDriverConstants.AT_RESPONSE_CMGL:
+                            case AtDriverConstants.AT_RESPONSE_CMGL:
                                 storage = this.parent.props.storage;
                                 storageIndex = tokens[0];
                                 storageStatus = tokens[1];
@@ -232,11 +232,11 @@ class ntAtProcessor {
         // +COPS: <mode>,<format>,<oper>,<rat>
         if (!Array.isArray(data.tokens[0])) {
             return {
-                network: ntAtNetwork.from(data.tokens)
+                network: AtNetwork.from(data.tokens)
             }
         } else {
             return {
-                networks: ntAtNetwork.list(data.tokens)
+                networks: AtNetwork.list(data.tokens)
             }
         }
     }
@@ -413,9 +413,9 @@ class ntAtProcessor {
             // 0 -> code, 1 -> data, 2 -> dcs
             const enc = data.tokens[2];
             let message = data.tokens[1];
-            if (parseInt(this.parent.getCmd(ntAtDriverConstants.AT_PARAM_USSD_ENCODING)) != enc ||
-                1 == parseInt(this.parent.getCmd(ntAtDriverConstants.AT_PARAM_USSD_ENCODED)) ||
-                1 == parseInt(this.parent.getCmd(ntAtDriverConstants.AT_PARAM_USSD_RESPONSE_ENCODED))) {
+            if (parseInt(this.parent.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING)) != enc ||
+                1 == parseInt(this.parent.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ||
+                1 == parseInt(this.parent.getCmd(AtDriverConstants.AT_PARAM_USSD_RESPONSE_ENCODED))) {
                 message = this.parent.decodeUssd(enc, message);
             }
             return {
@@ -444,18 +444,18 @@ class ntAtProcessor {
 /**
  * AT response data.
  */
-class ntAtProcessorData {
+class AtProcessorData {
 
     /**
      * Constructor.
      *
-     * @param {ntAtModem} parent 
+     * @param {AtModem} parent 
      * @param {String[]} response 
      */
     constructor(parent, response) {
         this.parent = parent;
         this.responses = Array.isArray(response) ? response :
-            response.split(this.parent.getCmd(ntAtDriverConstants.AT_PARAM_TERMINATOR));
+            response.split(this.parent.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR));
         this.clean();
     }
 
@@ -500,7 +500,7 @@ class ntAtProcessorData {
                             }
                             okay = true;
                             try {
-                                tokens = ntToken.split(value, {throwError: true});
+                                tokens = token.split(value, {throwError: true});
                             }
                             catch (e) {
                                 okay = false;
@@ -542,6 +542,6 @@ class ntAtProcessorData {
 }
 
 module.exports = {
-    ntAtProcessor: ntAtProcessor,
-    ntAtProcessorData: ntAtProcessorData,
+    AtProcessor: AtProcessor,
+    AtProcessorData: AtProcessorData,
 }
