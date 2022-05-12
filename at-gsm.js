@@ -75,8 +75,8 @@ class AtGsm extends AtModem {
                             this.memfull = null;
                         }
                     }
-                    catch (e) {
-                        console.log(e);
+                    catch (err) {
+                        console.error(err);
                     }
                     this.memfullProcessing = false;
                 } else {
@@ -125,25 +125,24 @@ class AtGsm extends AtModem {
                 // charsets
                 AtDriverConstants.AT_CMD_CHARSET_LIST
             ])
-                .then(res => {
-                    Object.assign(this.info, this.getResult({
-                        friendlyName: AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
-                        manufacturer: AtDriverConstants.AT_CMD_Q_MANUFACTURER,
-                        model: AtDriverConstants.AT_CMD_Q_MODEL,
-                        version: AtDriverConstants.AT_CMD_Q_VERSION,
-                        serial: AtDriverConstants.AT_CMD_Q_IMEI,
-                        imsi: AtDriverConstants.AT_CMD_Q_IMSI}, res));
-                    Object.assign(this.info, this.getResult({
-                        hasCall: AtDriverConstants.AT_CMD_CALL_MONITOR,
-                        hasSms: AtDriverConstants.AT_CMD_SMS_MONITOR,
-                        hasUssd: AtDriverConstants.AT_CMD_USSD_SET}, res, true));
-                    if (res[AtDriverConstants.AT_CMD_CHARSET_LIST] && res[AtDriverConstants.AT_CMD_CHARSET_LIST].hasResponse()) {
-                        this.doProcess(res[AtDriverConstants.AT_CMD_CHARSET_LIST].responses);
-                    }
-                    resolve();
-                })
-                .catch(err => reject(err))
-            ;
+            .then(res => {
+                Object.assign(this.info, this.getResult({
+                    friendlyName: AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
+                    manufacturer: AtDriverConstants.AT_CMD_Q_MANUFACTURER,
+                    model: AtDriverConstants.AT_CMD_Q_MODEL,
+                    version: AtDriverConstants.AT_CMD_Q_VERSION,
+                    serial: AtDriverConstants.AT_CMD_Q_IMEI,
+                    imsi: AtDriverConstants.AT_CMD_Q_IMSI}, res));
+                Object.assign(this.info, this.getResult({
+                    hasCall: AtDriverConstants.AT_CMD_CALL_MONITOR,
+                    hasSms: AtDriverConstants.AT_CMD_SMS_MONITOR,
+                    hasUssd: AtDriverConstants.AT_CMD_USSD_SET}, res, true));
+                if (res[AtDriverConstants.AT_CMD_CHARSET_LIST] && res[AtDriverConstants.AT_CMD_CHARSET_LIST].hasResponse()) {
+                    this.doProcess(res[AtDriverConstants.AT_CMD_CHARSET_LIST].responses);
+                }
+                resolve();
+            })
+            .catch(err => reject(err));
         });
     }
 
@@ -285,7 +284,7 @@ class AtGsm extends AtModem {
             delete this.props.caller;
         }
         if (this.props.storages && !this.props.memfull) {
-            Object.keys(this.props.storages).every((storage) => {
+            Object.keys(this.props.storages).every(storage => {
                 if (this.props.storages[storage].used == this.props.storages[storage].total) {
                     this.props.memfull = storage;
                     return false;

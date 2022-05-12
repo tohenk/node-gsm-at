@@ -732,8 +732,8 @@ class AtSms {
                 // Status itself
                 result.status = parseInt('0x' + seq.read(2));
             }
-        } catch (e) {
-            console.log(e.message);
+        } catch (err) {
+            console.error(err.message);
         }
         return result;
     }
@@ -963,8 +963,8 @@ class AtSmsMessage {
             }
             this.pdu = sms.hexPad((smsc.length / 2).toString(16).toUpperCase()) + smsc + pdu;
             return true;
-        } catch (e) {
-            console.log(e.message);
+        } catch (err) {
+            console.error(err.message);
         }
         return false;
     }

@@ -24,7 +24,6 @@
 
 const EventEmitter = require('events');
 const path = require('path');
-const util = require('util');
 const { Queue, Work } = require('@ntlab/work');
 const ntutil = require('@ntlab/ntlib/util');
 const Logger = require('@ntlab/ntlib/logger');
@@ -72,27 +71,19 @@ class AtModem extends EventEmitter {
 
     detect() {
         return Work.works([
-            w => Promise.resolve(this.useDriver('Generic')),
-            w => new Promise((resolve, reject) => {
-                this.tx('AT', {timeout: 1000})
-                    .then(() => resolve())
-                    .catch(() => reject(util.format('%s: not an AT modem.', this.name)))
-                ;
-            }),
-            w => new Promise((resolve, reject) => {
-                this.tx(this.getCmd(AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME))
-                    .then(result => {
-                        let driver = AtDriver.match(result.res());
-                        driver = driver.length ? driver : this.driver.name;
-                        if (driver.length) {
-                            this.detected = true;
-                            this.useDriver(driver);
-                        }
-                        resolve(this.driver);
-                    })
-                    .catch(() => reject(util.format('%s: modem information not available.', this.name)))
-                ;
-            }),
+            [w => Promise.resolve(this.useDriver('Generic'))],
+            [w => this.tx('AT', {timeout: 1000})],
+            [w => this.tx(this.getCmd(AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME))],
+            [w => new Promise((resolve, reject) => {
+                let result = w.getRes(2);
+                let driver = AtDriver.match(result.res());
+                driver = driver.length ? driver : this.driver.name;
+                if (driver.length) {
+                    this.detected = true;
+                    this.useDriver(driver);
+                }
+                resolve(this.driver);
+            })],
         ]);
     }
 
@@ -267,7 +258,7 @@ class AtModem extends EventEmitter {
 
     log() {
         this.logger.log.apply(this.logger, Array.from(arguments))
-            .then((message) => {
+            .then(message => {
                 this.emit('log', message);
             })
         ;
@@ -277,10 +268,11 @@ class AtModem extends EventEmitter {
         const args = Array.from(arguments);
         if (typeof this.config.logger == 'function') {
             this.config.logger.apply(null, args);
-        } else {
+        } else if (this.getConfig('debugToConsole', true)) {
             console.log.apply(null, args);
+        } else {
+            this.createDebugger.apply(this, args);
         }
-        this.createDebugger.apply(null, args);
     }
 
     createDebugger() {
@@ -289,7 +281,7 @@ class AtModem extends EventEmitter {
         }
         return this.debugger;
     }
- }
+}
 
 /**
  * AT response data.
