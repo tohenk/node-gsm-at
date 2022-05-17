@@ -104,7 +104,6 @@ class AtDriverConstants {
     static get AT_RESPONSE_MEM_FULL()               { return 'RESPONSE_MEM_FULL' }
     static get AT_RESPONSE_CME_ERROR()              { return 'RESPONSE_CME_ERROR' }
     static get AT_RESPONSE_CMS_ERROR()              { return 'RESPONSE_CMS_ERROR' }
-
 }
 
 /**

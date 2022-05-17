@@ -52,7 +52,7 @@ class AtGsm extends AtModem {
         }
         this.sendTimeout = config.sendTimeout || 60000; // 60 seconds
         this.monitorInterval = config.monitorInterval || 600000; // 10 minutes
-        this.on('process', (response) => {
+        this.on('process', response => {
             this.doProcess(response);
         });
         this.on('prop', () => {

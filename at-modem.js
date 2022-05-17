@@ -41,17 +41,20 @@ class AtModem extends EventEmitter {
         this.logdir = this.getConfig('logdir', path.join(__dirname, '..', 'logs'));
         this.logfile = path.join(this.logdir, this.name + '.log');
         this.logger = new Logger(this.logfile);
-        this.responses = [];
+        this.timeout = config.timeout || 5000;
         this.stream = stream;
+        this.props = {};
+        this.status = {};
+        this.idle = null;
+        this.timedout = 0;
+        this.detected = false;
+        this.qres = new Queue([], response => {
+            this.emit('process', response);
+            this.qres.next();
+        });
         this.stream.on('data', data => {
             this.rx(data);
         });
-        this.props = {};
-        this.status = {};
-        this.timeout = config.timeout || 5000;
-        this.idle = null;
-        this.detected = false;
-        this.timedout = 0;
     }
 
     getConfig(name, defaultValue) {
@@ -123,6 +126,8 @@ class AtModem extends EventEmitter {
     }
 
     rx(data) {
+        // when state is busy, received data should be ignored
+        // as its already handled by tx
         if (!this.status.busy) {
             data = ntutil.cleanEol(data);
             this.log('RX> %s', data);
@@ -209,19 +214,11 @@ class AtModem extends EventEmitter {
         });
     }
 
-    recv = function(data) {
-        this.responses.push(data);
-        this.process();
+    recv(data) {
+        this.qres.requeue([data]);
     }
 
-    process = function() {
-        if (this.responses.length) {
-            const response = this.responses.shift();
-            this.emit('process', response);
-        }
-    }
-
-    getCmd = function(cmd, vars) {
+    getCmd(cmd, vars) {
         cmd = this.driver.get(cmd);
         if (typeof cmd != 'undefined') {
             // substitude character => $XX
