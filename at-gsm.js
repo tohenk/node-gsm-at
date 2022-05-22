@@ -560,7 +560,7 @@ class AtGsm extends AtModem {
             }
             phoneNumber = this.countryCode + phoneNumber.substr(1);
         }
-        if (phoneNumber.charAt(0) != '+') {
+        if (phoneNumber.charAt(0) != '+' && !isNaN(phoneNumber) && phoneNumber.length > 5) {
             phoneNumber = '+' + phoneNumber;
         }
         return phoneNumber;
