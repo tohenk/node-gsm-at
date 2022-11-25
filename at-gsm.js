@@ -338,15 +338,13 @@ class AtGsm extends AtModem {
 
     doQueue(data) {
         if (!this.q) {
-            const next = success => {
-                this.debug('%s: Queue %s [%s]', this.name, this.queue.info, success ? 'OK' : 'FAILED');
-                this.queue = null;
+            const next = (queue, success) => {
+                this.debug('%s: Queue %s [%s]', this.name, queue.info, success ? 'OK' : 'FAILED');
                 this.q.pending = false;
                 this.q.next();
             }
             this.q = new Queue([data], queue => {
                 this.q.pending = true;
-                this.queue = queue;
                 queue.work()
                     .then(res => {
                         if (res != undefined) {
@@ -354,11 +352,11 @@ class AtGsm extends AtModem {
                         } else {
                             queue.resolve();
                         }
-                        next(true);
+                        next(queue, true);
                     })
                     .catch(err => {
                         queue.reject(err);
-                        next(false);
+                        next(queue, false);
                     })
                 ;
             }, () => {
@@ -618,8 +616,7 @@ class AtGsm extends AtModem {
                     if (err instanceof AtResponse) {
                         if (err.timeout) {
                             msg = util.format('%s: Operation timeout', err.data);
-                        }
-                        if (err.error && err.hasResponse()) {
+                        } else if (err.error && err.hasResponse()) {
                             msg = util.format('%s: %s', err.data, err.res());
                         } else {
                             msg = util.format('%s: Operation failed', err.data);
