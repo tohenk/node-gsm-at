@@ -1,6 +1,6 @@
 {
   "name": "@ntlab/gsm-at",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "A GSM AT library",
   "main": "index.js",
   "scripts": {
@@ -24,8 +24,8 @@
   "homepage": "https://github.com/tohenk/node-gsm-at#readme",
   "dependencies": {
     "@ntlab/ntlib": "^2.0.0",
-    "@ntlab/work": "^1.0.1",
+    "@ntlab/work": "^1.1.2",
     "debug": "^4.3.4",
-    "ini": "^3.0.0"
+    "ini": "^3.0.1"
   }
 }
