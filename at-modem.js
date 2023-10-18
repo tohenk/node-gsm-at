@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2022 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2018-2023 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documeAtion files (the "Software"), to deal in
@@ -307,10 +307,8 @@ class AtResponse {
         let result = false;
         this.extras = null;
         this.excludeMatch = true;
-        const responses = [];
-        Array.prototype.push.apply(responses, this.responses);
-        Array.prototype.push.apply(responses,
-            this.clean(response.split(this.parent.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR))));
+        const responses = Array.from(this.responses);
+        responses.push(...this.clean(response.split(this.parent.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR))));
         if (!result && this.isExpected(responses)) {
             result = true;
         }

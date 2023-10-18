@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2022 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2018-2023 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documeAtion files (the "Software"), to deal in
@@ -200,7 +200,7 @@ class AtGsm extends AtModem {
     resolveUnprocessed(data) {
         let result, resolved, len, response, nextdata, handler;
         const unprocessed = Array.isArray(this.unprocessed) ? this.unprocessed : [];
-        Array.prototype.push.apply(unprocessed, data.unprocessed);
+        unprocessed.push(...data.unprocessed);
         for (let i = 0; i < unprocessed.length; i++) {
             response = unprocessed[i];
             if (i + 1 < unprocessed.length) {
@@ -251,7 +251,7 @@ class AtGsm extends AtModem {
 
     processProps() {
         if (this.props.messages) {
-            Array.prototype.push.apply(this.messages, this.props.messages);
+            this.messages.push(...this.props.messages);
             delete this.props.messages;
             this.dispatchMessages();
         }
@@ -305,19 +305,29 @@ class AtGsm extends AtModem {
 
     processQueues(queues) {
         queues.forEach(queue => {
+            let res;
             switch (queue.op) {
                 case 'read':
-                    this.readStorage(queue.storage, queue.index);
+                    res = this.readStorage(queue.storage, queue.index);
                     break;
                 case 'delete':
-                    this.deleteStorage(queue.storage, queue.index);
+                    res = this.deleteStorage(queue.storage, queue.index);
                     break;
                 case 'command':
-                    this.query(queue.data, queue.options);
+                    res = this.query(queue.data, queue.options);
                     break;
                 default:
                     this.debug('%s: Unknown operation %s', this.name, queue.op);
                     break;
+            }
+            if (res instanceof Promise) {
+                res
+                    .then(() => {
+                        this.debug('%s: Done: %s', this.name, JSON.stringify(queue));
+                    })
+                    .catch(err => {
+                        this.debug('%s: Error: %s: %s', this.name, JSON.stringify(queue), err.toString());
+                    });
             }
         });
     }
@@ -388,7 +398,7 @@ class AtGsm extends AtModem {
         while (this.messages.length) {
             let nextIndex = null;
             let report = false;
-            let msg = this.messages[index].message;
+            const msg = this.messages[index].message;
             if (msg instanceof AtSmsStatusReport) {
                 report = true;
                 nextIndex = this.processReport(index, msg);
@@ -434,7 +444,7 @@ class AtGsm extends AtModem {
                 const parts = {};
                 parts[pos] = msg;
                 for (let i = pos + 1; i < this.messages.length; i++) {
-                    let nmsg = this.messages[i].message;
+                    const nmsg = this.messages[i].message;
                     if (!(nmsg instanceof AtSmsMessage)) continue;
                     // record non long messages in case the messages parts is still missing
                     if (nextPos == null && nmsg.getReference() == null) {
@@ -450,17 +460,17 @@ class AtGsm extends AtModem {
                 if (count == total) {
                     processed = true;
                     pos = Object.keys(parts);
-                    let msg = Object.values(parts).sort((a, b) => a.getIndex() - b.getIndex());
+                    const messages = Object.values(parts).sort((a, b) => a.getIndex() - b.getIndex());
                     let address = null;
                     let time = null;
                     let content = '';
-                    msg.forEach(message => {
+                    messages.forEach(message => {
                         if (null == address) address = message.address;
                         if (null == time) time = message.time;
                         content += message.message;
                     });
                     const hash = this.getHash(time, this.intlNumber(address), content);
-                    msg.forEach(message => {
+                    messages.forEach(message => {
                         message.hash = hash;
                     });
                 }
@@ -523,7 +533,7 @@ class AtGsm extends AtModem {
             dt = args.shift();
         }
         const values = [this.props.smsc, dt.toISOString()];
-        Array.prototype.push.apply(values, args);
+        values.push(...args);
         const shasum = require('crypto').createHash('sha1');
         shasum.update(values.join(''));
         return shasum.digest('hex');
@@ -648,8 +658,8 @@ class AtGsm extends AtModem {
             str = f(str, '_' + key + '_', patterns[key]);
         });
         const re = new RegExp(str);
-        let match;
-        if (match = re.exec(data)) {
+        const match = re.exec(data);
+        if (match) {
             return match[1];
         }
     }
