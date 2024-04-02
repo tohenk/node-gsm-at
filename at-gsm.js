@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2018-2023 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2018-2024 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documeAtion files (the "Software"), to deal in
@@ -88,15 +88,15 @@ class AtGsm extends AtModem {
 
     initialize() {
         return Work.works([
-            w => this.doInitialize(),
-            w => this.doQueryInfo(),
-            w => this.getCharset(),
-            w => this.getSmsMode(),
-            w => this.applyDefaultStorage(),
-            w => this.getSMSC(),
-            w => this.getNetwork(),
-            w => this.attachSignalMonitor(),
-            w => this.attachMemfullMonitor()
+            [w => this.doInitialize()],
+            [w => this.doQueryInfo()],
+            [w => this.getCharset()],
+            [w => this.getSmsMode()],
+            [w => this.applyDefaultStorage()],
+            [w => this.getSMSC()],
+            [w => this.getNetwork()],
+            [w => this.attachSignalMonitor()],
+            [w => this.attachMemfullMonitor()],
         ]);
     }
 
@@ -228,7 +228,7 @@ class AtGsm extends AtModem {
             this.processor.process(nextdata);
             if (nextdata.result) {
                 result = nextdata;
-                this.debug('%s: Unprocessed resolved %s', this.name, JSON.stringify(nextdata.result));
+                this.debug('%s: Unprocessed resolved %s', this.name, nextdata.result);
             }
             if (nextdata.unprocessed && nextdata.unprocessed.length && nextdata.index > 0) {
                 nextdata.unprocessed.splice(0, nextdata.index + 1);
@@ -323,27 +323,20 @@ class AtGsm extends AtModem {
             if (res instanceof Promise) {
                 res
                     .then(() => {
-                        this.debug('%s: Done: %s', this.name, JSON.stringify(queue));
+                        this.debug('%s: Done: %s', this.name, queue);
                     })
                     .catch(err => {
-                        this.debug('%s: Error: %s: %s', this.name, JSON.stringify(queue), err.toString());
+                        this.debug('%s: Error: %s: %s', this.name, queue, err.toString());
                     });
             }
         });
     }
 
-    addQueue(info, queue) {
-        if (typeof queue != 'function') {
-            return Promise.reject('addQueue() only accept a function');
+    addQueue(info, work, resolve, reject) {
+        if (typeof work != 'function') {
+            throw new Error('addQueue() work must be a function');
         }
-        return new Promise((resolve, reject) => {
-            this.doQueue({
-                info: info,
-                work: queue,
-                resolve: resolve,
-                reject: reject,
-            });
-        });
+        this.doQueue({info, work, resolve, reject});
     }
 
     doQueue(data) {
@@ -357,15 +350,19 @@ class AtGsm extends AtModem {
                 this.q.pending = true;
                 queue.work()
                     .then(res => {
-                        if (res != undefined) {
-                            queue.resolve(res);
-                        } else {
-                            queue.resolve();
+                        if (typeof queue.resolve === 'function') {
+                            if (res != undefined) {
+                                queue.resolve(res);
+                            } else {
+                                queue.resolve();
+                            }
                         }
                         next(queue, true);
                     })
                     .catch(err => {
-                        queue.reject(err);
+                        if (typeof queue.reject === 'function') {
+                            queue.reject(err);
+                        }
                         next(queue, false);
                     })
                 ;
@@ -596,7 +593,9 @@ class AtGsm extends AtModem {
 
     query(cmd, options) {
         options = options || {};
-        return this.addQueue({name: 'query', cmd: cmd, options: options}, () => this.doQuery(cmd, options));
+        return new Promise((resolve, reject) => {
+            this.addQueue({name: 'query', cmd: cmd, options: options}, () => this.doQuery(cmd, options), resolve, reject);
+        })
     }
 
     doQuery(cmd, options) {
@@ -608,7 +607,7 @@ class AtGsm extends AtModem {
                     let data;
                     if (Object.keys(storage).length) {
                         Object.assign(this.props, storage);
-                        this.debug('%s: Updating storage information from "%s"', this.name, JSON.stringify(storage));
+                        this.debug('%s: Updating storage information from %s', this.name, storage);
                     }
                     if (res.hasResponse()) {
                         data = this.doProcess(res.responses);
@@ -711,7 +710,7 @@ class AtGsm extends AtModem {
         const prompt = this.getCmd(AtDriverConstants.AT_RESPONSE_SMS_PROMPT);
         const waitPrompt = 1 == parseInt(this.getCmd(AtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT)) ? true : false;
         const works = [
-            w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_MODE_SET, {SMS_MODE: AtConst.SMS_MODE_PDU})),
+            [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_MODE_SET, {SMS_MODE: AtConst.SMS_MODE_PDU}))],
         ];
         queues.forEach(msg => {
             const params = {
@@ -720,108 +719,115 @@ class AtGsm extends AtModem {
                 COMMIT: this.getCmd(AtDriverConstants.AT_PARAM_SMS_COMMIT)
             }
             if (waitPrompt) {
-                works.push(w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_SEND_PDU, params), {
+                works.push([w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_SEND_PDU, params), {
                     expect: prompt
-                }));
-                works.push(w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_SEND_COMMIT, params), {
+                })]);
+                works.push([w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_SEND_COMMIT, params), {
                     timeout: this.sendTimeout,
                     context: msg
-                }));
+                })]);
             } else {
-                works.push(w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_SEND_PDU, params), {
+                works.push([w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_SEND_PDU, params), {
                     ignore: prompt,
                     timeout: this.sendTimeout,
                     context: msg
-                }));
+                })]);
             }
         });
-        return this.addQueue({name: 'sendPDU', destination: phoneNumber, message: message}, () => new Promise((resolve, reject) => {
-            const done = success => {
-                this.setState({sending: false});
-                this.emit('pdu', success, queues);
-                if (success) {
-                    resolve();
-                } else {
-                    reject();
+        return new Promise((resolve, reject) => {
+            this.addQueue({name: 'sendPDU', destination: phoneNumber, message: message}, () => new Promise((resolve, reject) => {
+                const done = success => {
+                    this.setState({sending: false});
+                    this.emit('pdu', success, queues);
+                    if (success) {
+                        resolve();
+                    } else {
+                        reject();
+                    }
                 }
-            }
-            this.setState({sending: true});
-            Work.works(works)
-                .then(() => done(true))
-                .catch(() => done(false))
-            ;
-        }));
+                this.setState({sending: true});
+                Work.works(works)
+                    .then(() => done(true))
+                    .catch(() => done(false))
+                ;
+            }), resolve, reject);
+        });
     }
 
     setStorage(storage, queued = true) {
         if (queued) {
-            return this.addQueue({name: 'setStorage', storage: storage}, () => this.setStorage(storage, false));
+            this.addQueue({name: 'setStorage', storage: storage}, () => this.setStorage(storage, false));
+        } else {
+            if (this.props.storage == storage) {
+                return Promise.resolve();
+            }
+            return new Promise((resolve, reject) => {
+                this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_SET, {STORAGE: storage}))
+                    .then(res => {
+                        this.props.storage = storage;
+                        resolve();
+                    })
+                    .catch(err => reject(err))
+                ;
+            });
         }
-        if (this.props.storage == storage) {
-            return Promise.resolve();
-        }
-        return new Promise((resolve, reject) => {
-            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_SET, {STORAGE: storage}))
-                .then(res => {
-                    this.props.storage = storage;
-                    resolve();
-                })
-                .catch(err => reject(err))
-            ;
-        });
     }
 
     getStorage(storage, queued = true) {
         if (queued) {
-            return this.addQueue({name: 'getStorage', storage: storage}, () => this.getStorage(storage, false));
+            this.addQueue({name: 'getStorage', storage: storage}, () => this.getStorage(storage, false));
+        } else {
+            if (storage) {
+                return Work.works([
+                    [w => this.setStorage(storage, false)],
+                    [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET))],
+                ]);
+            }
+            return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET));
         }
-        if (storage) {
-            return Work.works([
-                w => this.setStorage(storage, false),
-                w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET)),
-            ]);
-        }
-        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET));
     }
 
     readStorage(storage, index, queued = true) {
         if (queued) {
-            return this.addQueue({name: 'readStorage', storage: storage, index: index}, () => this.readStorage(storage, index, false));
+            this.addQueue({name: 'readStorage', storage: storage, index: index}, () => this.readStorage(storage, index, false));
+        } else {
+            return Work.works([
+                [w => this.setStorage(storage, false)],
+                [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_READ, {SMS_ID: index}))],
+            ]);
         }
-        return Work.works([
-            w => this.setStorage(storage, false),
-            w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_READ, {SMS_ID: index})),
-        ]);
     }
 
     deleteStorage(storage, index, queued = true) {
         if (queued) {
-            return this.addQueue({name: 'deleteStorage', storage: storage, index: index}, () => this.deleteStorage(storage, index, false));
+            this.addQueue({name: 'deleteStorage', storage: storage, index: index}, () => this.deleteStorage(storage, index, false));
+        } else {
+            return Work.works([
+                [w => this.setStorage(storage, false)],
+                [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_DELETE, {SMS_ID: index}))],
+            ]);
         }
-        return Work.works([
-            w => this.setStorage(storage, false),
-            w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_DELETE, {SMS_ID: index})),
-        ]);
     }
 
     emptyStorage(storage, queued = true) {
         if (queued) {
-            return this.addQueue({name: 'emptyStorage', storage: storage}, () => this.emptyStorage(storage, false));
+            this.addQueue({name: 'emptyStorage', storage: storage}, () => this.emptyStorage(storage, false));
+        } else {
+            return Work.works([
+                [w => this.getStorage(storage, false)],
+                [w => new Promise((resolve, reject) => {
+                    // 1 based storage index
+                    for (let i = 1; i <= this.props.storageTotal; i++) {
+                        this.deleteStorage(storage, i);
+                    }
+                    resolve();
+                })],
+            ]);
         }
-        return Work.works([
-            w => this.getStorage(storage, false),
-            w => new Promise((resolve, reject) => {
-                // 1 based storage index
-                for (let i = 1; i <= this.props.storageTotal; i++) {
-                    this.deleteStorage(storage, i);
-                }
-                resolve();
-            }),
-        ]);
     }
 
     applyDefaultStorage() {
-        return this.getStorage(this.getCmd(AtDriverConstants.AT_PARAM_SMS_STORAGE));
+        return this.getStorage(this.getCmd(AtDriverConstants.AT_PARAM_SMS_STORAGE), false);
     }
 
     getCharset() {
@@ -848,76 +854,81 @@ class AtGsm extends AtModem {
         return this.query(this.getCmd(AtDriverConstants.AT_CMD_NETWORK_LIST));
     }
 
-    dial(phoneNumber, hash, queued = true) {
+    dial(phoneNumber, hash, queued = false) {
         if (queued) {
-            return this.addQueue({name: 'dial', number: phoneNumber}, () => this.dial(phoneNumber, hash, false));
+            this.addQueue({name: 'dial', number: phoneNumber}, () => this.dial(phoneNumber, hash, false));
+        } else {
+            return new Promise((resolve, reject) => {
+                const data = {
+                    hash: hash ? hash : this.getHash(this.intlNumber(phoneNumber)),
+                    address: phoneNumber
+                }
+                this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_DIAL, {PHONE_NUMBER: phoneNumber}))
+                    .then(res => {
+                        this.emit('dial', true, data);
+                        resolve(res);
+                    })
+                    .catch(err => {
+                        this.emit('dial', false, data);
+                        reject(err);
+                    })
+                ;
+            });
         }
-        return new Promise((resolve, reject) => {
-            const data = {
-                hash: hash ? hash : this.getHash(this.intlNumber(phoneNumber)),
-                address: phoneNumber
-            }
-            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_DIAL, {PHONE_NUMBER: phoneNumber}))
-                .then(res => {
-                    this.emit('dial', true, data);
-                    resolve(res);
-                })
-                .catch(err => {
-                    this.emit('dial', false, data);
-                    reject(err);
-                })
-            ;
-        });
     }
 
     answer(queued = false) {
         if (queued) {
-            return this.addQueue({name: 'answer'}, () => this.answer(false));
+            this.addQueue({name: 'answer'}, () => this.answer(false));
+        } else {
+            return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_ANSWER));
         }
-        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_ANSWER));
     }
 
     hangup(queued = false) {
         if (queued) {
-            return this.addQueue({name: 'hangup'}, () => this.hangup(false));
+            this.addQueue({name: 'hangup'}, () => this.hangup(false));
+        } else {
+            return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_HANGUP));
         }
-        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_HANGUP));
     }
 
-    ussd(serviceCode, hash, queued = true) {
+    ussd(serviceCode, hash, queued = false) {
         if (queued) {
-            return this.addQueue({name: 'ussd', number: serviceCode}, () => this.ussd(serviceCode, hash, false));
+            this.addQueue({name: 'ussd', number: serviceCode}, () => this.ussd(serviceCode, hash, false));
+        } else {
+            return new Promise((resolve, reject) => {
+                const data = {
+                    hash: hash ? hash : this.getHash(serviceCode),
+                    address: serviceCode
+                }
+                this.ussdCode = serviceCode;
+                const enc = parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING));
+                const params = {
+                    SERVICE_NUMBER: 1 == parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
+                        this.encodeUssd(enc, serviceCode) : serviceCode,
+                    ENC: enc
+                };
+                this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_SEND, params))
+                    .then(res => {
+                        this.emit('ussd-dial', true, data);
+                        resolve(res);
+                    })
+                    .catch(err => {
+                        this.emit('ussd-dial', false, data);
+                        reject(err);
+                    })
+                ;
+            });
         }
-        return new Promise((resolve, reject) => {
-            const data = {
-                hash: hash ? hash : this.getHash(serviceCode),
-                address: serviceCode
-            }
-            this.ussdCode = serviceCode;
-            const enc = parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING));
-            const params = {
-                SERVICE_NUMBER: 1 == parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
-                    this.encodeUssd(enc, serviceCode) : serviceCode,
-                ENC: enc
-            };
-            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_SEND, params))
-                .then(res => {
-                    this.emit('ussd-dial', true, data);
-                    resolve(res);
-                })
-                .catch(err => {
-                    this.emit('ussd-dial', false, data);
-                    reject(err);
-                })
-            ;
-        });
     }
 
     ussdCancel(queued = false) {
         if (queued) {
-            return this.addQueue({name: 'ussdCancel'}, () => this.ussdCancel(false));
+            this.addQueue({name: 'ussdCancel'}, () => this.ussdCancel(false));
+        } else {
+            return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_CANCEL));
         }
-        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_CANCEL));
     }
 
     sendMessage(phoneNumber, message, hash) {
