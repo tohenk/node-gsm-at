@@ -41,9 +41,11 @@ class AtPool {
     }
 
     open(streamName) {
-        let gsm = this.get(streamName);
-        if (gsm) return Promise.resolve(gsm);
-        if (typeof this.streamFactory != 'function') {
+        const gsm = this.get(streamName);
+        if (gsm) {
+            return Promise.resolve(gsm);
+        }
+        if (typeof this.streamFactory !== 'function') {
             return Promise.reject('Invalid stream factory, only function accepted.');
         }
         return Work.works([

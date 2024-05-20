@@ -56,7 +56,7 @@ class AtProcessor {
                     matched: match.matched
                 });
                 const result = match.handler(data);
-                if (typeof result == 'object') {
+                if (typeof result === 'object') {
                     if (!data.result) {
                         data.result = {};
                     }
@@ -67,7 +67,7 @@ class AtProcessor {
         }
         data.unprocessed = data.responses;
         for (let i = matches.length - 1; i >= 0; i--) {
-            if (data.unprocessed[matches[i].index] != undefined) {
+            if (data.unprocessed[matches[i].index] !== undefined) {
                 data.unprocessed.splice(matches[i].index, 1);
             }
         }
@@ -76,9 +76,9 @@ class AtProcessor {
     handler(data) {
         const matches = [];
         for (let i = 0; i < this.processors.length; i++) {
-            let proc = this.processors[i];
-            let result = data.match(proc);
-            if (typeof result == 'object') {
+            const proc = this.processors[i];
+            const result = data.match(proc);
+            if (typeof result === 'object') {
                 result.handler = proc.handler;
                 matches.push(result);
             }
@@ -94,38 +94,41 @@ class AtProcessor {
             cmd: cmd,
             len: len
         }
-        if (typeof separator == 'function') {
+        if (typeof separator === 'function') {
             handler = separator;
             separator = null;
         }
-        if (separator) processor.separator = separator;
+        if (separator) {
+            processor.separator = separator;
+        }
         processor.handler = handler;
         this.processors.push(processor);
     }
 
     register() {
-        this.add(AtDriverConstants.AT_RESPONSE_CME_ERROR, 1, (data) => this.handleCME(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CMS_ERROR, 1, (data) => this.handleCMS(data));
-        this.add(AtDriverConstants.AT_RESPONSE_SMSC, 2, (data) => this.handleCSCA(data));
-        this.add(AtDriverConstants.AT_RESPONSE_COPS, 1, (data) => this.handleCOPS(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CSCS, 1, (data) => this.handleCSCS(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CLCK, 1, (data) => this.handleCLCK(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CSQ, 2, (data) => this.handleCSQ(data));
-        this.add(AtDriverConstants.AT_RESPONSE_RSSI, 1, (data) => this.handleRSSI(data));
-        this.add(AtDriverConstants.AT_RESPONSE_RING, 0, (data) => this.handleRING(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CLIP, 1, (data) => this.handleCLIP(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CALL_END, 1, (data) => this.handleCEND(data));
-        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE_DIRECT, 2, (data) => this.handleCMT(data));
-        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE, 2, (data) => this.handleCMTI(data));
-        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT, 1, (data) => this.handleCDS(data));
-        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT, 2, (data) => this.handleCDSI(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CPMS, 3, (data) => this.handleCPMS(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CMGF, 1, (data) => this.handleCMGF(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CMGL, 4, (data) => this.handleCMGL(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CMGR, 3, (data) => this.handleCMGR(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CMGS, 1, (data) => this.handleCMGS(data));
-        this.add(AtDriverConstants.AT_RESPONSE_CUSD, 1, '\n', (data) => this.handleCUSD(data));
-        this.add(AtDriverConstants.AT_RESPONSE_MEM_FULL, 1, (data) => this.handleMEMFULL(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CME_ERROR, 1, data => this.handleCME(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMS_ERROR, 1, data => this.handleCMS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_SMSC, 2, data => this.handleCSCA(data));
+        this.add(AtDriverConstants.AT_RESPONSE_COPS, 1, data => this.handleCOPS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CSCS, 1, data => this.handleCSCS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CLCK, 1, data => this.handleCLCK(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CSQ, 2, data => this.handleCSQ(data));
+        this.add(AtDriverConstants.AT_RESPONSE_RSSI, 1, data => this.handleRSSI(data));
+        this.add(AtDriverConstants.AT_RESPONSE_RING, 0, data => this.handleRING(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CLIP, 1, data => this.handleCLIP(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CALL_END, 1, data => this.handleCEND(data));
+        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE_DIRECT, 2, data => this.handleCMT(data));
+        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE, 2, data => this.handleCMTI(data));
+        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT, 1, data => this.handleCDS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT, 2, data => this.handleCDSI(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CPMS, 3, data => this.handleCPMS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMGF, 1, data => this.handleCMGF(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMGL, 4, data => this.handleCMGL(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMGR, 3, data => this.handleCMGR(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CMGS, 1, data => this.handleCMGS(data));
+        this.add(AtDriverConstants.AT_RESPONSE_CUSD, 1, '\n', data => this.handleCUSD(data));
+        this.add(AtDriverConstants.AT_RESPONSE_MEM_FULL, 1, data => this.handleMEMFULL(data));
+        this.add(AtDriverConstants.AT_RESPONSE_STK, 1, data => this.handleSTK(data));
     }
 
     readPDU(data) {
@@ -134,19 +137,25 @@ class AtProcessor {
         let tokens, next, pdu, startIndex, processedIndex;
         let index = data.index;
         while (true) {
-            if (index >= data.responses.length) break;
+            if (index >= data.responses.length) {
+                break;
+            }
             startIndex = index;
-            if (index == data.index) {
+            if (index === data.index) {
                 tokens = data.tokens;
             } else {
                 tokens = next;
             }
-            if (!tokens) break;
+            if (!tokens) {
+                break;
+            }
             pdu = '';
             if (tokens.length >= len) {
                 while (true) {
                     index++;
-                    if (index >= data.responses.length) break;
+                    if (index >= data.responses.length) {
+                        break;
+                    }
                     let match = data.matchAt(data.matched, index);
                     if (match.matched) {
                         next = match.tokens;
@@ -156,12 +165,14 @@ class AtProcessor {
                     }
                 }
                 if (pdu.length) {
-                    if (processedIndex == undefined) processedIndex = startIndex;
+                    if (processedIndex === undefined) {
+                        processedIndex = startIndex;
+                    }
                     let msg = AtSms.decode(pdu);
                     let tplen = tokens[len - 1];
                     this.parent.debug('%s: PDU = %s, tplen = %d, expected = %d [%s]', this.parent.name, pdu, msg.tplen, tplen,
-                        msg.tplen == tplen ? 'OK' : 'SKIPPED');
-                    if (msg.tplen == tplen) {
+                        msg.tplen === tplen ? 'OK' : 'SKIPPED');
+                    if (msg.tplen === tplen) {
                         let storage, storageIndex, storageStatus;
                         switch (data.matched.cmd) {
                             case AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT:
@@ -191,7 +202,7 @@ class AtProcessor {
                 }
             }
         }
-        if (processedIndex != undefined) {
+        if (processedIndex !== undefined) {
             data.responses.splice(processedIndex, index - processedIndex + 1);
         }
         return result;
@@ -260,7 +271,7 @@ class AtProcessor {
         // +CLCK: ("CS","PS","..","..","..")
         if (!isNaN(data.tokens[0])) {
             return {
-                keylock: data.tokens[0] == 1
+                keylock: parseInt(data.tokens[0]) === 1
             }
         } else {
             return {
@@ -342,19 +353,26 @@ class AtProcessor {
         const storages = {};
         while (true) {
             // response must be at least 3 part
-            if (data.tokens.length < 3) break;
+            if (data.tokens.length < 3) {
+                break;
+            }
             // ensure storage is not number
-            if (!isNaN(data.tokens[0])) break;
-            let info = {};
-            info.storage = data.tokens.shift();
+            if (!isNaN(data.tokens[0])) {
+                break;
+            }
+            const info = {storage: data.tokens.shift()};
             // used storage
             let value = data.tokens.shift();
-            if (!isNaN(value)) info.used = parseInt(value);
+            if (!isNaN(value)) {
+                info.used = parseInt(value);
+            }
             // total storage
             value = data.tokens.shift();
-            if (!isNaN(value)) info.total = parseInt(value);
+            if (!isNaN(value)) {
+                info.total = parseInt(value);
+            }
             // add unique storage information
-            if (!storages[info.storage] && info.used != undefined && info.total != undefined) {
+            if (!storages[info.storage] && info.used !== undefined && info.total !== undefined) {
                 storages[info.storage] = info;
             }
         }
@@ -411,11 +429,11 @@ class AtProcessor {
         // +CUSD: 0,<str>,<dcs>
         if (data.tokens.length >= 3) {
             // 0 -> code, 1 -> data, 2 -> dcs
-            const enc = data.tokens[2];
+            const enc = parseInt(data.tokens[2]);
             let message = data.tokens[1];
-            if (parseInt(this.parent.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING)) != enc ||
-                1 == parseInt(this.parent.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ||
-                1 == parseInt(this.parent.getCmd(AtDriverConstants.AT_PARAM_USSD_RESPONSE_ENCODED))) {
+            if (parseInt(this.parent.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING)) !== enc ||
+                1 === parseInt(this.parent.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ||
+                1 === parseInt(this.parent.getCmd(AtDriverConstants.AT_PARAM_USSD_RESPONSE_ENCODED))) {
                 message = this.parent.decodeUssd(enc, message);
             }
             return {
@@ -437,6 +455,13 @@ class AtProcessor {
         // ^SMMEMFULL: "SM"
         return {
             memfull: data.tokens[0]
+        }
+    }
+
+    handleSTK(data) {
+        // +STIN: 1
+        return {
+            stk: data.tokens[0]
         }
     }
 }
@@ -463,14 +488,18 @@ class AtProcessorData {
         let index = this.responses.length;
         while (index >= 0) {
             index--;
-            if ('' == this.responses[index]) this.responses.splice(index, 1);
+            if ('' === this.responses[index]) {
+                this.responses.splice(index, 1);
+            }
         }
     }
 
     match(processor) {
         let i = 0;
         while (true) {
-            if (i == this.responses.length) break;
+            if (i === this.responses.length) {
+                break;
+            }
             let result = this.matchAt(processor, i);
             if (result.matched) {
                 return result;
@@ -486,14 +515,16 @@ class AtProcessorData {
             const response = this.responses[index];
             if (this.isMatch(command, response)) {
                 let value = null, tokens = null;
-                let found = processor.len == 0 ? true : false; 
+                let found = processor.len === 0 ? true : false; 
                 if (!found) {
                     value = response.substring(command.length).trimLeft();
                     if (value.length) {
                         let okay;
                         let nextIndex = index;
                         while (true) {
-                            if (nextIndex >= this.responses.length) break;
+                            if (nextIndex >= this.responses.length) {
+                                break;
+                            }
                             if (nextIndex > index) {
                                 if (processor.separator) value += processor.separator;
                                 value += this.responses[nextIndex];
@@ -533,7 +564,7 @@ class AtProcessorData {
 
     isMatch(command, response) {
         if (command) {
-            if (response.toLowerCase().substring(0, command.length) == command.toLowerCase()) {
+            if (response.toLowerCase().substring(0, command.length) === command.toLowerCase()) {
                 return true;
             }
         }

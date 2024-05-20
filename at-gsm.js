@@ -217,9 +217,11 @@ class AtGsm extends AtModem {
                     }
                 }
             }
-            if (resolved != undefined) break;
+            if (resolved !== undefined) {
+                break;
+            }
         }
-        if (resolved != undefined) {
+        if (resolved !== undefined) {
             unprocessed[resolved] = response;
             if (len > 0) {
                 unprocessed.splice(resolved + 1, len);
@@ -243,7 +245,7 @@ class AtGsm extends AtModem {
     saveUnprocessed(data) {
         this.unprocessed = data;
         if (Array.isArray(this.unprocessed)) {
-            this.unprocessed.forEach((s) => {
+            this.unprocessed.forEach(s => {
                 this.debug('! %s: [%s]', this.name, s);
             });
         }
@@ -259,11 +261,11 @@ class AtGsm extends AtModem {
             this.processQueues(this.props.queues);
             delete this.props.queues;
         }
-        if (this.props.ussd && typeof this.props.ussd.wait == 'undefined') {
+        if (this.props.ussd && this.props.ussd.wait === undefined) {
             this.emit('ussd', this.props.ussd);
             delete this.props.ussd;
         }
-        if (typeof this.props.ringing != 'undefined') {
+        if (this.props.ringing !== undefined) {
             if (this.props.ringing) {
                 if (!this.ringCount) {
                     this.ringCount = 1;
@@ -277,15 +279,17 @@ class AtGsm extends AtModem {
             delete this.props.ringing;
         }
         if (this.props.caller) {
-            if (this.caller != this.props.caller) {
+            if (this.caller !== this.props.caller) {
                 this.caller = this.props.caller;
-                if (this.ringCount > 0) this.emit('ring', this.caller);
+                if (this.ringCount > 0) {
+                    this.emit('ring', this.caller);
+                }
             }
             delete this.props.caller;
         }
         if (this.props.storages && !this.props.memfull) {
             Object.keys(this.props.storages).every(storage => {
-                if (this.props.storages[storage].used == this.props.storages[storage].total) {
+                if (this.props.storages[storage].used === this.props.storages[storage].total) {
                     this.props.memfull = storage;
                     return false;
                 } else {
@@ -295,7 +299,7 @@ class AtGsm extends AtModem {
             delete this.props.storages;
         }
         if (this.props.memfull) {
-            if (this.memfull != this.props.memfull) {
+            if (this.memfull !== this.props.memfull) {
                 this.memfull = this.props.memfull;
                 this.debug('%s: Storage %s is full', this.name, this.memfull);
             }
@@ -333,7 +337,7 @@ class AtGsm extends AtModem {
     }
 
     addQueue(info, work, resolve, reject) {
-        if (typeof work != 'function') {
+        if (typeof work !== 'function') {
             throw new Error('addQueue() work must be a function');
         }
         this.doQueue({info, work, resolve, reject});
@@ -351,7 +355,7 @@ class AtGsm extends AtModem {
                 queue.work()
                     .then(res => {
                         if (typeof queue.resolve === 'function') {
-                            if (res != undefined) {
+                            if (res !== undefined) {
                                 queue.resolve(res);
                             } else {
                                 queue.resolve();
@@ -404,7 +408,7 @@ class AtGsm extends AtModem {
                 nextIndex = this.processSMS(index, msg);
             }
             if (nextIndex != null) {
-                let indexes = Array.isArray(nextIndex) ? nextIndex : [nextIndex];
+                const indexes = Array.isArray(nextIndex) ? nextIndex : [nextIndex];
                 if (report || this.options.deleteMessageOnRead) {
                     for (let i = 0; i < indexes.length; i++) {
                         index = indexes[i];
@@ -435,26 +439,30 @@ class AtGsm extends AtModem {
         let count = 1;
         // check for long messages
         let ref = msg.getReference();
-        if (null != ref) {
+        if (null !== ref) {
             total = msg.getTotal();
             if (this.messages.length - pos > 1) {
                 const parts = {};
                 parts[pos] = msg;
                 for (let i = pos + 1; i < this.messages.length; i++) {
                     const nmsg = this.messages[i].message;
-                    if (!(nmsg instanceof AtSmsMessage)) continue;
+                    if (!(nmsg instanceof AtSmsMessage)) {
+                        continue;
+                    }
                     // record non long messages in case the messages parts is still missing
-                    if (nextPos == null && nmsg.getReference() == null) {
+                    if (nextPos === null && nmsg.getReference() === null) {
                         nextPos = i;
                     }
-                    if (nmsg.getReference() == ref) {
+                    if (nmsg.getReference() === ref) {
                         count++;
                         parts[i] = nmsg;
                     }
-                    if (count == total) break;
+                    if (count === total) {
+                        break;
+                    }
                 }
                 // is all message parts found?
-                if (count == total) {
+                if (count === total) {
                     processed = true;
                     pos = Object.keys(parts);
                     const messages = Object.values(parts).sort((a, b) => a.getIndex() - b.getIndex());
@@ -462,8 +470,12 @@ class AtGsm extends AtModem {
                     let time = null;
                     let content = '';
                     messages.forEach(message => {
-                        if (null == address) address = message.address;
-                        if (null == time) time = message.time;
+                        if (null === address) {
+                            address = message.address;
+                        }
+                        if (null === time) {
+                            time = message.time;
+                        }
                         content += message.message;
                     });
                     const hash = this.getHash(time, this.intlNumber(address), content);
@@ -474,13 +486,13 @@ class AtGsm extends AtModem {
             }
         }
         if (!processed) {
-            if (null == ref) {
+            if (null === ref) {
                 // always process non long messages
                 processed = true;
             } else {
                 // if long messages parts was still missing then process non long one
                 this.debug('%s: Waiting for other messages part from %s, found %d/%d', this.name, msg.address, count, total);
-                if (nextPos != null) {
+                if (nextPos !== null) {
                     msg = this.messages[nextPos].message;
                     pos = nextPos;
                     processed = true;
@@ -506,7 +518,9 @@ class AtGsm extends AtModem {
             }
             let nextRef = result;
             nextRef++;
-            if (nextRef > 255) nextRef = 0;
+            if (nextRef > 255) {
+                nextRef = 0;
+            }
             try {
                 fs.writeFileSync(this.msgRefFilename, JSON.stringify({
                     msgref: nextRef
@@ -518,7 +532,9 @@ class AtGsm extends AtModem {
         } else {
             result = msgref;
             msgref++;
-            if (msgref > 255) msgref = 0;
+            if (msgref > 255) {
+                msgref = 0;
+            }
         }
         return result;
     }
@@ -537,12 +553,12 @@ class AtGsm extends AtModem {
     }
 
     localizeNumber(phoneNumber) {
-        if (phoneNumber.charAt(0) == '+') {
-            if (typeof this.splitICC == 'function') {
+        if (phoneNumber.charAt(0) === '+') {
+            if (typeof this.splitICC === 'function') {
                 const icc = this.splitICC(phoneNumber);
-                if (icc.length == 2) {
+                if (icc.length === 2) {
                     phoneNumber = icc[1];
-                    if (phoneNumber.charAt(0) != '0') {
+                    if (phoneNumber.charAt(0) !== '0') {
                         phoneNumber = '0' + phoneNumber;
                     }
                 }
@@ -552,11 +568,11 @@ class AtGsm extends AtModem {
     }
 
     intlNumber(phoneNumber) {
-        if (phoneNumber.charAt(0) == '0') {
+        if (phoneNumber.charAt(0) === '0') {
             // get country code from SMSC
-            if (!this.countryCode && typeof this.splitICC == 'function') {
+            if (!this.countryCode && typeof this.splitICC === 'function') {
                 const icc = this.splitICC(this.props.smsc);
-                if (icc.length == 2) {
+                if (icc.length === 2) {
                     this.countryCode = icc[0];
                 }
             }
@@ -565,7 +581,7 @@ class AtGsm extends AtModem {
             }
             phoneNumber = this.countryCode + phoneNumber.substr(1);
         }
-        if (phoneNumber.charAt(0) != '+' && !isNaN(phoneNumber) && phoneNumber.length > 5) {
+        if (phoneNumber.charAt(0) !== '+' && !isNaN(phoneNumber) && phoneNumber.length > 5) {
             phoneNumber = '+' + phoneNumber;
         }
         return phoneNumber;
@@ -611,7 +627,7 @@ class AtGsm extends AtModem {
                     }
                     if (res.hasResponse()) {
                         data = this.doProcess(res.responses);
-                        if (typeof options.context == 'object' && typeof data.result == 'object') {
+                        if (typeof options.context === 'object' && typeof data.result === 'object') {
                             Object.assign(options.context, data.result);
                         }
                     }
@@ -631,7 +647,7 @@ class AtGsm extends AtModem {
                             msg = util.format('%s: Operation failed', err.data);
                         }
                     }
-                    let error = new Error(util.format('%s: %s', this.name, msg));
+                    const error = new Error(util.format('%s: %s', this.name, msg));
                     if (err instanceof Error) {
                         error.previous = err;
                     }
@@ -666,11 +682,11 @@ class AtGsm extends AtModem {
     saveStorage(cmd) {
         const result = {};
         const storage = this.findMatchedCommand(cmd, AtDriverConstants.AT_CMD_SMS_STORAGE_SET, {STORAGE: '([A-Z]+)'});
-        if (storage != undefined) {
+        if (storage !== undefined) {
             result.storage = storage;
         }
         const storageIndex = this.findMatchedCommand(cmd, AtDriverConstants.AT_CMD_SMS_READ, {SMS_ID: '(\\d+)'});
-        if (storageIndex != undefined) {
+        if (storageIndex !== undefined) {
             result.storageIndex = parseInt(storageIndex);
         }
         return result;
@@ -685,9 +701,9 @@ class AtGsm extends AtModem {
         }
         const dcs = AtSms.detectCodingScheme(message);
         const messages = AtSms.smsSplit(dcs, message);
-        let reference = messages.length > 1 ? this.getMessageReference() : null;
+        const reference = messages.length > 1 ? this.getMessageReference() : null;
         for (let index = 0; index < messages.length; index++) {
-            let msg = new AtSmsMessage();
+            const msg = new AtSmsMessage();
             msg.dcs = dcs;
             msg.address = phoneNumber;
             if (messages.length > 1) {
@@ -708,7 +724,7 @@ class AtGsm extends AtModem {
             queues.push(msg);
         }
         const prompt = this.getCmd(AtDriverConstants.AT_RESPONSE_SMS_PROMPT);
-        const waitPrompt = 1 == parseInt(this.getCmd(AtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT)) ? true : false;
+        const waitPrompt = 1 === parseInt(this.getCmd(AtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT)) ? true : false;
         const works = [
             [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_MODE_SET, {SMS_MODE: AtConst.SMS_MODE_PDU}))],
         ];
@@ -758,7 +774,7 @@ class AtGsm extends AtModem {
         if (queued) {
             this.addQueue({name: 'setStorage', storage: storage}, () => this.setStorage(storage, false));
         } else {
-            if (this.props.storage == storage) {
+            if (this.props.storage === storage) {
                 return Promise.resolve();
             }
             return new Promise((resolve, reject) => {
@@ -905,7 +921,7 @@ class AtGsm extends AtModem {
                 this.ussdCode = serviceCode;
                 const enc = parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING));
                 const params = {
-                    SERVICE_NUMBER: 1 == parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
+                    SERVICE_NUMBER: 1 === parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
                         this.encodeUssd(enc, serviceCode) : serviceCode,
                     ENC: enc
                 };

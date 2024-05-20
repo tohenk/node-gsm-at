@@ -58,15 +58,15 @@ class AtModem extends EventEmitter {
     }
 
     getConfig(name, defaultValue) {
-        if (this.config && typeof this.config[name] != 'undefined') {
+        if (this.config && this.config[name] !== undefined) {
             return this.config[name];
         }
         return defaultValue;
     }
 
     useDriver(name) {
-        let driver = AtDriver.get(name);
-        if (typeof driver == 'undefined') {
+        const driver = AtDriver.get(name);
+        if (driver === undefined) {
             throw new Error('Unknown driver ' + name);
         }
         this.driver = driver;
@@ -78,7 +78,7 @@ class AtModem extends EventEmitter {
             [w => this.tx('AT', {timeout: 1000})],
             [w => this.tx(this.getCmd(AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME))],
             [w => new Promise((resolve, reject) => {
-                let result = w.getRes(2);
+                const result = w.getRes(2);
                 let driver = AtDriver.match(result.res());
                 driver = driver.length ? driver : this.driver.name;
                 if (driver.length) {
@@ -101,16 +101,16 @@ class AtModem extends EventEmitter {
         Object.assign(this.status, state);
         let isIdle = true;
         Object.values(this.status).forEach(value => {
-            if (value == true) {
+            if (value === true) {
                 isIdle = false;
                 return true;
             }
         });
-        if (this.idle != isIdle) {
+        if (this.idle !== isIdle) {
             this.idle = isIdle;
             const states = [];
             Object.keys(this.status).forEach(state => {
-                if (this.status[state] == true) {
+                if (this.status[state] === true) {
                     states.push(state);
                 }
             });
@@ -119,7 +119,7 @@ class AtModem extends EventEmitter {
     }
 
     propChanged(props) {
-        if (typeof props == 'object') {
+        if (typeof props === 'object') {
             Object.assign(this.props, props);
         }
         this.emit('prop');
@@ -142,8 +142,12 @@ class AtModem extends EventEmitter {
                 this.setState({busy: true});
                 let timeout = null;
                 const params = {};
-                if (options.expect) params.expect = options.expect;
-                if (options.ignore) params.ignore = options.ignore;
+                if (options.expect) {
+                    params.expect = options.expect;
+                }
+                if (options.ignore) {
+                    params.ignore = options.ignore;
+                }
                 const txres = new AtResponse(this, params);
                 // set data for error handler
                 txres.data = data;
@@ -197,11 +201,13 @@ class AtModem extends EventEmitter {
     txqueue(queues) {
         return new Promise((resolve, reject) => {
             const q = new Queue(queues, data => {
-                let cmd = Array.isArray(data) ? data[0] : data;
-                let vars = Array.isArray(data) ? data[1] : null;
+                const cmd = Array.isArray(data) ? data[0] : data;
+                const vars = Array.isArray(data) ? data[1] : null;
                 this.tx(this.getCmd(cmd, vars))
                     .then(res => {
-                        if (!q.responses) q.responses = {};
+                        if (!q.responses) {
+                            q.responses = {};
+                        }
                         q.responses[cmd] = res;
                         q.next();
                     })
@@ -220,7 +226,7 @@ class AtModem extends EventEmitter {
 
     getCmd(cmd, vars) {
         cmd = this.driver.get(cmd);
-        if (typeof cmd != 'undefined') {
+        if (cmd !== undefined) {
             // substitude character => $XX
             let match;
             while (match = cmd.match(/\$([a-zA-Z0-9]{2})/)) {
@@ -228,7 +234,7 @@ class AtModem extends EventEmitter {
                     cmd.substr(match.index + match[0].length);
             }
             // replace place holder
-            let replacements = {'NONE': '', 'CR': '\r', 'LF': '\n'};
+            const replacements = {'NONE': '', 'CR': '\r', 'LF': '\n'};
             if (vars) {
                 Object.keys(vars).forEach(key => {
                     replacements[key] = vars[key];
@@ -240,10 +246,10 @@ class AtModem extends EventEmitter {
 
     getResult(cmds, res, status) {
         const result = {};
-        for (let prop in cmds) {
-            let cmd = cmds[prop];
+        for (const prop in cmds) {
+            const cmd = cmds[prop];
             if (res[cmd]) {
-                if (typeof status != 'undefined' && status) {
+                if (status !== undefined && status) {
                     result[prop] = res[cmd].okay ? true : false;
                 } else {
                     result[prop] = res[cmd].res();
@@ -263,7 +269,7 @@ class AtModem extends EventEmitter {
 
     debug() {
         const args = Array.from(arguments);
-        if (typeof this.config.logger == 'function') {
+        if (typeof this.config.logger === 'function') {
             this.config.logger.apply(null, args);
         } else if (this.getConfig('debugToConsole', true)) {
             console.log.apply(null, args);
@@ -273,7 +279,7 @@ class AtModem extends EventEmitter {
     }
 
     createDebugger() {
-        if (this.debugger == undefined) {
+        if (this.debugger === undefined) {
             this.debugger = require('debug')('at-modem:' + this.name);
         }
         return this.debugger;
@@ -326,7 +332,9 @@ class AtResponse {
         let index = responses.length;
         while (index >= 0) {
             index--;
-            if ('' == responses[index]) responses.splice(index, 1);
+            if ('' === responses[index]) {
+                responses.splice(index, 1);
+            }
         }
         return responses;
     }
@@ -335,13 +343,21 @@ class AtResponse {
         this.responses = [];
         let i = 0, j = responses.length;
         while (true) {
-            if (i >= j) break;
-            let s = responses.shift();
-            if (i == this.match.pos) {
-                if (this.excludeMatch) break;
+            if (i >= j) {
+                break;
             }
-            if (!this.isIgnored(s)) this.responses.push(s);
-            if (i == this.match.pos) break;
+            const s = responses.shift();
+            if (i === this.match.pos) {
+                if (this.excludeMatch) {
+                    break;
+                }
+            }
+            if (!this.isIgnored(s)) {
+                this.responses.push(s);
+            }
+            if (i === this.match.pos) {
+                break;
+            }
             i++;
         }
         if (responses.length) {
@@ -351,13 +367,17 @@ class AtResponse {
 
     getMatch(responses, matches, raw) {
         this.match = {};
-        raw = typeof raw !== 'undefined' ? raw : false;
+        raw = raw !== undefined ? raw : false;
         let pos = 0;
         while (true) {
-            if (pos >= responses.length) break;
+            if (pos >= responses.length) {
+                break;
+            }
             for (let i = 0; i < matches.length; i++) {
-                let expected = raw ? matches[i] : this.parent.getCmd(matches[i]);
-                if (expected == undefined) continue;
+                const expected = raw ? matches[i] : this.parent.getCmd(matches[i]);
+                if (expected === undefined) {
+                    continue;
+                }
                 if (this.tryMatch(responses, pos, expected)) {
                     this.match.pos = pos;
                     this.match.matched = matches[i];
@@ -381,7 +401,9 @@ class AtResponse {
                 let i = pos + 1;
                 let matched = false;
                 while (true) {
-                    if (i >= responses.length) break;
+                    if (i >= responses.length) {
+                        break;
+                    }
                     s += responses[i];
                     if (this.matchRaw(expected, s)) {
                         matched = true;
@@ -443,7 +465,7 @@ class AtResponse {
 
     isMatch(value, response) {
         if (value) {
-            let values = Array.isArray(value) ? value : [value];
+            const values = Array.isArray(value) ? value : [value];
             for (let i = 0; i < values.length; i++) {
                 if (this.matchRaw(values[i], response)) {
                     return true;

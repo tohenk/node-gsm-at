@@ -102,6 +102,7 @@ class AtDriverConstants {
     static get AT_RESPONSE_CALL_END()               { return 'RESPONSE_CALL_END' }
     static get AT_RESPONSE_COPS()                   { return 'RESPONSE_COPS' }
     static get AT_RESPONSE_MEM_FULL()               { return 'RESPONSE_MEM_FULL' }
+    static get AT_RESPONSE_STK()                    { return 'RESPONSE_STK' }
     static get AT_RESPONSE_CME_ERROR()              { return 'RESPONSE_CME_ERROR' }
     static get AT_RESPONSE_CMS_ERROR()              { return 'RESPONSE_CMS_ERROR' }
 }
@@ -117,7 +118,7 @@ class AtDriver {
         this.parent = null;
         this.commands = {};
         this.init();
-        if (parent && parent.constructor && parent.constructor.name == this.constructor.name) {
+        if (parent && parent.constructor && parent.constructor.name === this.constructor.name) {
             this.parent = parent;
             this.import(this.parent.commands);
         }
@@ -196,20 +197,21 @@ class AtDriver {
         this.add(AtDriverConstants.AT_RESPONSE_CALL_END,                '%NONE%');
         this.add(AtDriverConstants.AT_RESPONSE_COPS,                    '+COPS:');
         this.add(AtDriverConstants.AT_RESPONSE_MEM_FULL,                '%NONE%');
+        this.add(AtDriverConstants.AT_RESPONSE_STK,                     '%NONE%');
         this.add(AtDriverConstants.AT_RESPONSE_CME_ERROR,               '+CME ERROR:');
         this.add(AtDriverConstants.AT_RESPONSE_CMS_ERROR,               '+CMS ERROR:');
     }
 
     import(commands) {
-        if (typeof commands != 'undefined') {
-            for (let cmd in commands) {
+        if (typeof commands !== undefined) {
+            for (const cmd in commands) {
                 this.add(cmd, commands[cmd]);
             }
         }
     }
 
     check(key) {
-        if (typeof key == 'undefined') {
+        if (key === undefined) {
             throw new Error('Key must be defined!');
         }
     }
@@ -228,7 +230,7 @@ class AtDriver {
 
     has(key) {
         this.check(key);
-        return typeof this.commands[key] != 'undefined' ? true : false;
+        return this.commands[key] !== undefined ? true : false;
     }
 }
 
@@ -247,24 +249,24 @@ class AtDrivers {
     load(filename) {
         if (fs.existsSync(filename)) {
             const config = ini.parse(fs.readFileSync(filename, 'utf-8'));
-            for (let key in config) {
+            for (const key in config) {
                 let items = config[key];
                 let drvName = key;
                 let drvDesc = key;
                 let drvParent = null;
                 // description
                 let s = AtDriverUtil.getNonCmdProps(items);
-                if (typeof s != 'undefined') {
+                if (s !== undefined) {
                     drvDesc = s;
                     items = items[s];
                 }
                 // parent
                 s = AtDriverUtil.getNonCmdProps(items);
-                if (typeof s != 'undefined') {
+                if (s !== undefined) {
                     drvParent = this.get(s);
                     items = items[s];
                 }
-                let drv = new AtDriver(drvParent);
+                const drv = new AtDriver(drvParent);
                 drv.name = drvName;
                 drv.desc = drvDesc;
                 drv.import(items);
@@ -279,10 +281,10 @@ class AtDrivers {
      * @param {AtDriver} driver The driver
      */
     add(driver) {
-        if (typeof driver.name == 'undefined') {
+        if (driver.name === undefined) {
             throw new Error('Invalid AT driver object.');
         }
-        if (typeof this.drivers[driver.name] != 'undefined') {
+        if (this.drivers[driver.name] !== undefined) {
             throw new Error('Driver ' + driver.name + ' already registered.');
         }
         this.drivers[driver.name] = driver;
@@ -295,7 +297,7 @@ class AtDrivers {
      * @returns {AtDriver} The driver
      */
     get(name) {
-        if (typeof this.drivers[name] != 'undefined') {
+        if (this.drivers[name] !== undefined) {
             return this.drivers[name];
         }
     }
@@ -311,8 +313,8 @@ class AtDrivers {
 
     match(s) {
         let driver = '';
-        for (let drv in this.drivers) {
-            if (s.toLowerCase() == drv.toLowerCase()) {
+        for (const drv in this.drivers) {
+            if (s.toLowerCase() === drv.toLowerCase()) {
                 driver = drv;
                 break;
             } else {
@@ -337,8 +339,8 @@ class AtDriverUtil {
     }
 
     static getNonCmdProps(o) {
-        var keys = this.getObjectProps(o);
-        if (keys.length == 1) {
+        const keys = this.getObjectProps(o);
+        if (keys.length === 1) {
             if (keys[0].substr(0, 4) != 'CMD_' &&
                 keys[0].substr(0, 6) != 'PARAM_' &&
                 keys[0].substr(0, 9) != 'RESPONSE_') {
@@ -349,7 +351,7 @@ class AtDriverUtil {
 }
 
 const drivers = new AtDrivers();
-if (typeof drivers.get('Generic') == 'undefined') {
+if (drivers.get('Generic') === undefined) {
     drivers.add(new AtDriver());
 }
 
