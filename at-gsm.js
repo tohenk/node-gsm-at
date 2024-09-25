@@ -65,7 +65,7 @@ class AtGsm extends AtModem {
                     try {
                         if (this.options.emptyWhenFull) {
                             this.debug('!! %s: Emptying full storage %s', this.name, this.memfull);
-                            this.emptyStorage(this.memfull)
+                            this.emptyStorage(this.memfull, false)
                                 .then(() => {
                                     this.memfull = null;
                                 })
