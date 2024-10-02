@@ -573,6 +573,6 @@ class AtProcessorData {
 }
 
 module.exports = {
-    AtProcessor: AtProcessor,
-    AtProcessorData: AtProcessorData,
+    AtProcessor,
+    AtProcessorData,
 }

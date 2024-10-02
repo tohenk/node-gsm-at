@@ -52,9 +52,7 @@ class AtModem extends EventEmitter {
             this.emit('process', response);
             this.qres.next();
         });
-        this.stream.on('data', data => {
-            this.rx(data);
-        });
+        this.stream.on('data', data => this.rx(data));
     }
 
     getConfig(name, defaultValue) {
@@ -98,23 +96,23 @@ class AtModem extends EventEmitter {
     }
 
     setState(state) {
+        let idle = true;
         Object.assign(this.status, state);
-        let isIdle = true;
         Object.values(this.status).forEach(value => {
             if (value === true) {
-                isIdle = false;
+                idle = false;
                 return true;
             }
         });
-        if (this.idle !== isIdle) {
-            this.idle = isIdle;
+        if (this.idle !== idle) {
+            this.idle = idle;
             const states = [];
             Object.keys(this.status).forEach(state => {
                 if (this.status[state] === true) {
                     states.push(state);
                 }
             });
-            this.emit('state');
+            this.emit('state', states);
         }
     }
 
@@ -214,9 +212,7 @@ class AtModem extends EventEmitter {
                     .catch(err => q.next())
                 ;
             });
-            q.once('done', () => {
-                resolve(q.responses);
-            });
+            q.once('done', () => resolve(q.responses));
         });
     }
 
@@ -501,6 +497,6 @@ class AtResponse {
 }
 
 module.exports = {
-    AtModem: AtModem,
-    AtResponse: AtResponse,
+    AtModem,
+    AtResponse,
 }

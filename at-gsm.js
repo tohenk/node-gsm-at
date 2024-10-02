@@ -52,12 +52,8 @@ class AtGsm extends AtModem {
         }
         this.sendTimeout = config.sendTimeout || 60000; // 60 seconds
         this.monitorInterval = config.monitorInterval || 600000; // 10 minutes
-        this.on('process', response => {
-            this.doProcess(response);
-        });
-        this.on('prop', () => {
-            this.processProps();
-        });
+        this.on('process', response => this.doProcess(response));
+        this.on('prop', () => this.processProps());
         this.on('state', () => {
             if (this.idle) {
                 if (this.memfull && !this.memfullProcessing) {
@@ -312,10 +308,10 @@ class AtGsm extends AtModem {
             let res;
             switch (queue.op) {
                 case 'read':
-                    res = this.readStorage(queue.storage, queue.index);
+                    res = this.readStorageQueued(queue.storage, queue.index);
                     break;
                 case 'delete':
-                    res = this.deleteStorage(queue.storage, queue.index);
+                    res = this.deleteStorageQueued(queue.storage, queue.index);
                     break;
                 case 'command':
                     res = this.query(queue.data, queue.options);
@@ -388,10 +384,7 @@ class AtGsm extends AtModem {
     }
 
     queueCount() {
-        if (this.q) {
-            return this.q.queues.length;
-        }
-        return 0;
+        return this.q ? this.q.queues.length : 0;
     }
 
     dispatchMessages() {
@@ -407,12 +400,12 @@ class AtGsm extends AtModem {
             if (msg instanceof AtSmsMessage) {
                 nextIndex = this.processSMS(index, msg);
             }
-            if (nextIndex != null) {
+            if (nextIndex !== null) {
                 const indexes = Array.isArray(nextIndex) ? nextIndex : [nextIndex];
                 if (report || this.options.deleteMessageOnRead) {
                     for (let i = 0; i < indexes.length; i++) {
                         index = indexes[i];
-                        this.deleteStorage(this.messages[index].storage, this.messages[index].index);
+                        this.deleteStorageQueued(this.messages[index].storage, this.messages[index].index);
                     }
                 }
                 for (let i = indexes.length - 1; i >= 0; i--) {
@@ -522,9 +515,7 @@ class AtGsm extends AtModem {
                 nextRef = 0;
             }
             try {
-                fs.writeFileSync(this.msgRefFilename, JSON.stringify({
-                    msgref: nextRef
-                }));
+                fs.writeFileSync(this.msgRefFilename, JSON.stringify({msgref: nextRef}));
             }
             catch (err) {
                 console.error(err);
@@ -636,7 +627,8 @@ class AtGsm extends AtModem {
                     } else {
                         resolve();
                     }
-                }).catch(err => {
+                })
+                .catch(err => {
                     let msg = err;
                     if (err instanceof AtResponse) {
                         if (err.timeout) {
@@ -770,80 +762,173 @@ class AtGsm extends AtModem {
         });
     }
 
-    setStorage(storage, queued = true) {
-        if (queued) {
-            this.addQueue({name: 'setStorage', storage: storage}, () => this.setStorage(storage, false));
-        } else {
-            if (this.props.storage === storage) {
-                return Promise.resolve();
-            }
-            return new Promise((resolve, reject) => {
-                this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_SET, {STORAGE: storage}))
-                    .then(res => {
-                        this.props.storage = storage;
-                        resolve();
-                    })
-                    .catch(err => reject(err))
-                ;
-            });
+    setStorage(storage) {
+        if (this.props.storage === storage) {
+            return Promise.resolve();
         }
-    }
-
-    getStorage(storage, queued = true) {
-        if (queued) {
-            this.addQueue({name: 'getStorage', storage: storage}, () => this.getStorage(storage, false));
-        } else {
-            if (storage) {
-                return Work.works([
-                    [w => this.setStorage(storage, false)],
-                    [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET))],
-                ]);
-            }
-            return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET));
-        }
-    }
-
-    readStorage(storage, index, queued = true) {
-        if (queued) {
-            this.addQueue({name: 'readStorage', storage: storage, index: index}, () => this.readStorage(storage, index, false));
-        } else {
-            return Work.works([
-                [w => this.setStorage(storage, false)],
-                [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_READ, {SMS_ID: index}))],
-            ]);
-        }
-    }
-
-    deleteStorage(storage, index, queued = true) {
-        if (queued) {
-            this.addQueue({name: 'deleteStorage', storage: storage, index: index}, () => this.deleteStorage(storage, index, false));
-        } else {
-            return Work.works([
-                [w => this.setStorage(storage, false)],
-                [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_DELETE, {SMS_ID: index}))],
-            ]);
-        }
-    }
-
-    emptyStorage(storage, queued = true) {
-        if (queued) {
-            this.addQueue({name: 'emptyStorage', storage: storage}, () => this.emptyStorage(storage, false));
-        } else {
-            return Work.works([
-                [w => this.getStorage(storage, false)],
-                [w => new Promise((resolve, reject) => {
-                    // 1 based storage index
-                    for (let i = 1; i <= this.props.storageTotal; i++) {
-                        this.deleteStorage(storage, i);
-                    }
+        return new Promise((resolve, reject) => {
+            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_SET, {STORAGE: storage}))
+                .then(res => {
+                    this.props.storage = storage;
                     resolve();
-                })],
+                })
+                .catch(err => reject(err))
+            ;
+        });
+    }
+
+    setStorageQueued(storage) {
+        this.addQueue({name: 'setStorage', storage: storage}, () => this.setStorage(storage));
+    }
+
+    getStorage(storage) {
+        if (storage) {
+            return Work.works([
+                [w => this.setStorage(storage)],
+                [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET))],
             ]);
         }
+        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET));
+    }
+
+    getStorageQueued(storage) {
+        this.addQueue({name: 'getStorage', storage: storage}, () => this.getStorage(storage));
+    }
+
+    readStorage(storage, index) {
+        return Work.works([
+            [w => this.setStorage(storage)],
+            [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_READ, {SMS_ID: index}))],
+        ]);
+    }
+
+    readStorageQueued(storage, index) {
+        this.addQueue({name: 'readStorage', storage: storage, index: index}, () => this.readStorage(storage, index));
+    }
+
+    deleteStorage(storage, index) {
+        return Work.works([
+            [w => this.setStorage(storage)],
+            [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_DELETE, {SMS_ID: index}))],
+        ]);
+    }
+
+    deleteStorageQueued(storage, index) {
+        this.addQueue({name: 'deleteStorage', storage: storage, index: index}, () => this.deleteStorage(storage, index));
+    }
+
+    emptyStorage(storage) {
+        return Work.works([
+            [w => this.getStorage(storage)],
+            [w => new Promise((resolve, reject) => {
+                // 1 based storage index
+                const q = new Queue(Array.from({length: this.props.storageTotal}, (_, i) => i + 1), i => {
+                    this.deleteStorage(storage, i)
+                        .then(() => q.next())
+                        .catch(() => q.next())
+                    ;
+                });
+                q.once('done', () => resolve());
+            })],
+        ]);
+    }
+
+    emptyStorageQueued(storage) {
+        this.addQueue({name: 'emptyStorage', storage: storage}, () => this.emptyStorage(storage));
+    }
+
+    dial(phoneNumber, hash) {
+        return new Promise((resolve, reject) => {
+            const data = {
+                hash: hash ? hash : this.getHash(this.intlNumber(phoneNumber)),
+                address: phoneNumber
+            }
+            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_DIAL, {PHONE_NUMBER: phoneNumber}))
+                .then(res => {
+                    this.emit('dial', true, data);
+                    resolve(res);
+                })
+                .catch(err => {
+                    this.emit('dial', false, data);
+                    reject(err);
+                })
+            ;
+        });
+    }
+
+    dialQueued(phoneNumber, hash) {
+        this.addQueue({name: 'dial', number: phoneNumber}, () => this.dial(phoneNumber, hash));
+    }
+
+    answer() {
+        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_ANSWER));
+    }
+
+    answerQueued() {
+        this.addQueue({name: 'answer'}, () => this.answer());
+    }
+
+    hangup() {
+        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_HANGUP));
+    }
+
+    hangupQueued() {
+        this.addQueue({name: 'hangup'}, () => this.hangup());
+    }
+
+    ussd(serviceCode, hash) {
+        return new Promise((resolve, reject) => {
+            const data = {
+                hash: hash ? hash : this.getHash(serviceCode),
+                address: serviceCode
+            }
+            this.ussdCode = serviceCode;
+            const enc = parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING));
+            const params = {
+                SERVICE_NUMBER: 1 === parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
+                    this.encodeUssd(enc, serviceCode) : serviceCode,
+                ENC: enc
+            };
+            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_SEND, params))
+                .then(res => {
+                    this.emit('ussd-dial', true, data);
+                    resolve(res);
+                })
+                .catch(err => {
+                    this.emit('ussd-dial', false, data);
+                    reject(err);
+                })
+            ;
+        });
+    }
+
+    ussdQueued(serviceCode, hash) {
+        this.addQueue({name: 'ussd', number: serviceCode}, () => this.ussd(serviceCode, hash));
+    }
+
+    ussdCancel() {
+        return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_CANCEL));
+    }
+
+    ussdCancelQueued() {
+        this.addQueue({name: 'ussdCancel'}, () => this.ussdCancel());
+    }
+
+    sendMessage(phoneNumber, message, hash) {
+        switch (parseInt(this.getCmd(AtDriverConstants.AT_PARAM_SMS_MODE))) {
+            case AtConst.SMS_MODE_PDU:
+                return this.sendPDU(phoneNumber, message, hash);
+            case AtConst.SMS_MODE_TEXT:
+                throw new Error('SMS text mode is not supported.');
+        }
+    }
+
+    listMessage(status) {
+        return this.query(this.getCmd(AtDriverConstants.AT_CMD_SMS_LIST, {SMS_STAT: status}));
     }
 
     applyDefaultStorage() {
-        return this.getStorage(this.getCmd(AtDriverConstants.AT_PARAM_SMS_STORAGE), false);
+        return this.getStorage(this.getCmd(AtDriverConstants.AT_PARAM_SMS_STORAGE));
     }
 
     getCharset() {
@@ -868,96 +953,6 @@ class AtGsm extends AtModem {
 
     getNetworks() {
         return this.query(this.getCmd(AtDriverConstants.AT_CMD_NETWORK_LIST));
-    }
-
-    dial(phoneNumber, hash, queued = false) {
-        if (queued) {
-            this.addQueue({name: 'dial', number: phoneNumber}, () => this.dial(phoneNumber, hash, false));
-        } else {
-            return new Promise((resolve, reject) => {
-                const data = {
-                    hash: hash ? hash : this.getHash(this.intlNumber(phoneNumber)),
-                    address: phoneNumber
-                }
-                this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_DIAL, {PHONE_NUMBER: phoneNumber}))
-                    .then(res => {
-                        this.emit('dial', true, data);
-                        resolve(res);
-                    })
-                    .catch(err => {
-                        this.emit('dial', false, data);
-                        reject(err);
-                    })
-                ;
-            });
-        }
-    }
-
-    answer(queued = false) {
-        if (queued) {
-            this.addQueue({name: 'answer'}, () => this.answer(false));
-        } else {
-            return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_ANSWER));
-        }
-    }
-
-    hangup(queued = false) {
-        if (queued) {
-            this.addQueue({name: 'hangup'}, () => this.hangup(false));
-        } else {
-            return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_HANGUP));
-        }
-    }
-
-    ussd(serviceCode, hash, queued = false) {
-        if (queued) {
-            this.addQueue({name: 'ussd', number: serviceCode}, () => this.ussd(serviceCode, hash, false));
-        } else {
-            return new Promise((resolve, reject) => {
-                const data = {
-                    hash: hash ? hash : this.getHash(serviceCode),
-                    address: serviceCode
-                }
-                this.ussdCode = serviceCode;
-                const enc = parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING));
-                const params = {
-                    SERVICE_NUMBER: 1 === parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
-                        this.encodeUssd(enc, serviceCode) : serviceCode,
-                    ENC: enc
-                };
-                this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_SEND, params))
-                    .then(res => {
-                        this.emit('ussd-dial', true, data);
-                        resolve(res);
-                    })
-                    .catch(err => {
-                        this.emit('ussd-dial', false, data);
-                        reject(err);
-                    })
-                ;
-            });
-        }
-    }
-
-    ussdCancel(queued = false) {
-        if (queued) {
-            this.addQueue({name: 'ussdCancel'}, () => this.ussdCancel(false));
-        } else {
-            return this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_CANCEL));
-        }
-    }
-
-    sendMessage(phoneNumber, message, hash) {
-        switch (parseInt(this.getCmd(AtDriverConstants.AT_PARAM_SMS_MODE))) {
-            case AtConst.SMS_MODE_PDU:
-                return this.sendPDU(phoneNumber, message, hash);
-            case AtConst.SMS_MODE_TEXT:
-                throw new Error('SMS text mode is not supported.');
-        }
-    }
-
-    listMessage(status) {
-        return this.query(this.getCmd(AtDriverConstants.AT_CMD_SMS_LIST, {SMS_STAT: status}));
     }
 }
 

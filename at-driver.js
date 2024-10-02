@@ -341,9 +341,9 @@ class AtDriverUtil {
     static getNonCmdProps(o) {
         const keys = this.getObjectProps(o);
         if (keys.length === 1) {
-            if (keys[0].substr(0, 4) != 'CMD_' &&
-                keys[0].substr(0, 6) != 'PARAM_' &&
-                keys[0].substr(0, 9) != 'RESPONSE_') {
+            if (keys[0].substr(0, 4) !== 'CMD_' &&
+                keys[0].substr(0, 6) !== 'PARAM_' &&
+                keys[0].substr(0, 9) !== 'RESPONSE_') {
                 return keys[0];
             }
         }
@@ -357,5 +357,5 @@ if (drivers.get('Generic') === undefined) {
 
 module.exports = {
     AtDriver: drivers,
-    AtDriverConstants: AtDriverConstants,
+    AtDriverConstants,
 }

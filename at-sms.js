@@ -99,7 +99,7 @@ class AtSms {
     getAlphabet7MapKey(char) {
         let result;
         Object.keys(this.Alphabet7Map).forEach((key) => {
-            if (this.Alphabet7Map[key] == char) {
+            if (this.Alphabet7Map[key] === char) {
                 result = parseInt(key);
                 return true;
             }
@@ -114,8 +114,10 @@ class AtSms {
         let leftover = 0;
         for (let i = 0; i <= len; i++) {
             let c = value.substr(i * 2, 2);
-            if (!this.isHexChar(c.charAt(0))) break;
-            if (c.length == 2 && !this.isHexChar(c.charAt(1))) {
+            if (!this.isHexChar(c.charAt(0))) {
+                break;
+            }
+            if (c.length === 2 && !this.isHexChar(c.charAt(1))) {
                 c = c.charAt(0);
             }
             let octet = parseInt('0x' + c);
@@ -123,8 +125,10 @@ class AtSms {
             leftover = (octet & (~(0xff >> x))) >> (8 - x);
             septet += String.fromCharCode(char);
             x++;
-            if (x == 8) {
-                if (i !== len || leftover !== 0) septet += String.fromCharCode(leftover);
+            if (x === 8) {
+                if (i !== len || leftover !== 0) {
+                    septet += String.fromCharCode(leftover);
+                }
                 x = 1;
                 leftover = 0;
             }
@@ -140,7 +144,7 @@ class AtSms {
         let char;
         for (let i = 0; i < len; i++) {
             if (x < 7) {
-                nextChar = i == len - 1 ? 0 : value.charCodeAt(i + 1);
+                nextChar = i === len - 1 ? 0 : value.charCodeAt(i + 1);
                 char = ((nextChar & (~(0xff << (x + 1)))) << (7 - x)) | (value.charCodeAt(i) >> x);
                 octet += this.hexPad(char.toString(16).toUpperCase(), 2);
                 x++;
@@ -172,10 +176,10 @@ class AtSms {
         let septet = '';
         for (let i = 0; i < value.length; i++) {
             let char = this.alphabetIndex7Bit(value.charCodeAt(i));
-            if (char == -1) {
+            if (char === -1) {
                 char = this.escapeIndex7Bit(value.charCodeAt(i));
                 let mapped = this.getAlphabet7MapChar(char);
-                if (typeof mapped != 'undefined') {
+                if (mapped !== undefined) {
                     char = mapped;
                 } else {
                     throw new Error('Unable to find map for character code ' + char.toString() + '.');
@@ -196,19 +200,22 @@ class AtSms {
         let i = 0;
         value = this.unpack7Bit(value);
         while (true) {
-            if (i == value.length) break;
+            if (i === value.length) {
+                break;
+            }
             let v = value.charCodeAt(i);
             let char = v <= this.Alphabet7Bit.length ? v : 0;
-            if (v == this.Alphabet7Escape) {
-                i++;
-                if (i == value.length) break;
+            if (v === this.Alphabet7Escape) {
+                if (++i === value.length) {
+                    break;
+                }
                 /*
                   The ESC character 0x1B is mapped to the no-break space character, unless it is part of a
                   valid ESC sequence, to facilitate round-trip compatibility in the presence of unknown ESC
                   sequences.
                 */
                 let mapped = this.getAlphabet7MapKey(value.charCodeAt(i));
-                if (typeof mapped != 'undefined') {
+                if (mapped !== undefined) {
                     char = mapped;
                 } else {
                     /*
@@ -216,7 +223,7 @@ class AtSms {
                         This code value is reserved for the extension to another extension table. On receipt of this
                         code, a receiving entity shall display a space until another extension table is defined.
                     */
-                    if (value.charCodeAt(i) == 27) {
+                    if (value.charCodeAt(i) === 27) {
                         char = 32;
                     } else {
                         char = 63;
@@ -238,11 +245,13 @@ class AtSms {
                   also up to FORM FEED.  But 0x00 is also the code for COMMERCIAL AT when some other character
                   (CARRIAGE RETURN if nothing else) comes after the 0x00.
                 */
-                if (char == 0 && i < value.length - 1 && value.charCodeAt(i + 1) == 0) {
+                if (char === 0 && i < value.length - 1 && value.charCodeAt(i + 1) === 0) {
                     let k = i + 2;
-                    while (k < value.length && value.charCodeAt(k) == 0) k++; // 0x00 up to the...
-                    if (k == value.length ||
-                        (k < value.length - 1 && value.charCodeAt(k) == this.Alphabet7Escape && value.charCodeAt(k + 1) == 10)
+                    while (k < value.length && value.charCodeAt(k) === 0) {
+                        k++; // 0x00 up to the...
+                    }
+                    if (k === value.length ||
+                        (k < value.length - 1 && value.charCodeAt(k) === this.Alphabet7Escape && value.charCodeAt(k + 1) === 10)
                     ) {
                         i = k - 1;
                         char = 0;
@@ -307,15 +316,17 @@ class AtSms {
     }
 
     hexPad(s, len) {
-        if (typeof len == 'undefined') {
+        if (len === undefined) {
             len = 2;
         }
-        while ((s.length % len) > 0) s = '0' + s;
+        while ((s.length % len) > 0) {
+            s = '0' + s;
+        }
         return s;
     }
 
     bitSet(value, bit) {
-        return (value & bit) == bit ? true : false;
+        return (value & bit) === bit ? true : false;
     }
 
     detectCodingScheme(value) {
@@ -324,12 +335,18 @@ class AtSms {
         for (let i = 0; i < value.length; i++) {
             let char = value.charCodeAt(i);
             if (is7Bit) {
-                if (!this.is7Bit(char)) is7Bit = false;
+                if (!this.is7Bit(char)) {
+                    is7Bit = false;
+                }
             }
             if (is8Bit) {
-                if (char > 255) is8Bit = false;
+                if (char > 255) {
+                    is8Bit = false;
+                }
             }
-            if (!is7Bit && !is8Bit) break;
+            if (!is7Bit && !is8Bit) {
+                break;
+            }
         }
         switch (true) {
             case is7Bit:
@@ -342,29 +359,23 @@ class AtSms {
     }
 
     smsMaxLen(CODING_SCHEME, longMessage) {
-        longMessage = longMessage || false;
         let len = 0;
-        switch (CODING_SCHEME) {
-            case this.CODING_SCHEME.CS_7BIT:
-                len = 160;
-                if (longMessage) len -= 7;
-                break;
-            case this.CODING_SCHEME.CS_8BIT:
-                len = 140;
-                if (longMessage) len -= 6;
-                break;
-            case this.CODING_SCHEME.CS_UCS2:
-                len = 70;
-                if (longMessage) len -= 3;
-                break;
-            default:
-                break;
+        const smsLengths = {
+            [this.CODING_SCHEME.CS_7BIT]: [160, 7],
+            [this.CODING_SCHEME.CS_8BIT]: [140, 6],
+            [this.CODING_SCHEME.CS_UCS2]: [70, 3],
+        }
+        if (smsLengths[CODING_SCHEME] !== undefined) {
+            len = smsLengths[CODING_SCHEME][0];
+            if (longMessage) {
+                len -= smsLengths[CODING_SCHEME][1];
+            }
         }
         return len;
     }
 
     smsLen(codingScheme, value) {
-        if (codingScheme == this.CODING_SCHEME.CS_7BIT) {
+        if (codingScheme === this.CODING_SCHEME.CS_7BIT) {
             return this.gsmLength7Bit(value);
         }
         return value.length;
@@ -375,7 +386,9 @@ class AtSms {
         if (this.smsLen(codingScheme, value) > this.smsMaxLen(codingScheme)) {
             const maxLen = this.smsMaxLen(codingScheme, true);
             while (true) {
-                if (value.length == 0) break;
+                if (value.length === 0) {
+                    break;
+                }
                 let len = maxLen;
                 while (true) {
                     if (this.smsLen(codingScheme, value.substr(0, len)) <= maxLen) {
@@ -408,17 +421,17 @@ class AtSms {
         const npi = (addrType & 0x0F);        // numbering plan identification
         let number = raw.substr(2);
         // alpha numeric
-        if (ton == 5) {
+        if (ton === 5) {
             number = this.gsmDecode7Bit(number);
         } else {
             number = this.reverseOctets(number);
-            if (number.length && number.substr(-1).toUpperCase() == 'F') {
+            if (number.length && number.substr(-1).toUpperCase() === 'F') {
                 number = number.substr(0,  number.length - 1);
             }
             switch (ton) {
                 case 1: // international number
                 case 2: // national number
-                    if (number.charAt(0) != '+') {
+                    if (number.charAt(0) !== '+') {
                         number = '+' + number;
                     }
                     break;
@@ -429,12 +442,14 @@ class AtSms {
 
     encodeNumber(number) {
         let result = '81';
-        if (number.length && number.substr(0, 1) == '+') {
+        if (number.length && number.substr(0, 1) === '+') {
             result = '91';
             number = number.substr(1);
         }
         result = this.hexPad(number.length.toString(16).toUpperCase()) + result;
-        if ((number.length % 2) > 0) number += 'F';
+        if ((number.length % 2) > 0) {
+            number += 'F';
+        }
         result += this.reverseOctets(number);
         return result;
     }
@@ -446,8 +461,8 @@ class AtSms {
             if (skip) {
                 skip = false;
             } else {
-                if (str.charAt(i) == '\r' || str.charAt(i) == '\n') {
-                    if (i < str.length - 1 && (str.substr(i, 2) == '\r\n' || str.substr(i, 2) == '\n\r')) {
+                if (str.charAt(i) === '\r' || str.charAt(i) === '\n') {
+                    if (i < str.length - 1 && (str.substr(i, 2) === '\r\n' || str.substr(i, 2) === '\n\r')) {
                         skip = true;
                     }
                     result += '\r\n';
@@ -460,7 +475,7 @@ class AtSms {
     }
 
     decodeTimeStamp(raw) {
-        if (raw.length != 14) {
+        if (raw.length !== 14) {
             throw new Error('SMS PDU: Timestamp must have 7 octets!');
         }
         raw = this.reverseOctets(raw);
@@ -540,20 +555,28 @@ class AtSms {
         hour = hour % 24;
         if (week > 0) {
             if (Math.floor(week / 5) > 0) {
-                if (result == 0) result = 197;
+                if (result === 0) {
+                    result = 197;
+                }
                 result += (week - 5);
             } else {
-                if (result == 0) result = 173;
+                if (result === 0) {
+                    result = 173;
+                }
                 result += (week - 1) * 7;
             }
         }
         if (day > 0) {
-            if (result == 0) result = 166;
+            if (result === 0) {
+                result = 166;
+            }
             result += day;
         }
         if (hour > 0) {
             if (Math.floor(hour / 12) > 0) {
-                if (result == 0) result = 143;
+                if (result === 0) {
+                    result = 143;
+                }
                 result += (hour % 12) * 2;
                 result += Math.floor(minute / 30);
                 minute = 0;
@@ -611,10 +634,13 @@ class AtSms {
             // Check if PDU contain SMSC information
             try {
                 len = parseInt('0x' + seq.read(2)) * 2;
-            } catch (e) {
+            }
+            catch (e) {
                 len = 0;
             }
-            if (len > 0) smsc = this.decodeNumber(seq.read(len));
+            if (len > 0) {
+                smsc = this.decodeNumber(seq.read(len));
+            }
             pduSize = ((PDU.length - len) / 2) - 1;
             // Check if SMS-Submit or SMS-Deliver
             /*
@@ -633,11 +659,12 @@ class AtSms {
             */
             try {
                 pduType = parseInt('0x' + seq.read(2));
-            } catch (e) {
+            }
+            catch (e) {
                 pduType = 0;
             }
-            let isSubmit = (pduType & 3) == 1;
-            let isReport = (pduType & 3) == 2;
+            let isSubmit = (pduType & 3) === 1;
+            let isReport = (pduType & 3) === 2;
             result = !isReport ? new AtSmsMessage() : new AtSmsStatusReport();
             result.pdu = PDU;
             result.tplen = pduSize;
@@ -655,10 +682,13 @@ class AtSms {
             // Get Sender Field Length and Startpos
             try {
                 len = parseInt('0x' + seq.read(2));
-            } catch (e) {
+            }
+            catch (e) {
                 len = 0;
             }
-            if ((len % 2) > 0) len++;
+            if ((len % 2) > 0) {
+                len++;
+            }
             len += 2;
             result.address = this.decodeNumber(seq.read(len));
             if (!isReport) {
@@ -676,7 +706,8 @@ class AtSms {
                 */
                 try {
                     dcs = parseInt('0x' + seq.read(2));
-                } catch (e) {
+                }
+                catch (e) {
                     dcs = 0;
                 }
                 /*
@@ -732,7 +763,8 @@ class AtSms {
                 // Status itself
                 result.status = parseInt('0x' + seq.read(2));
             }
-        } catch (err) {
+        }
+        catch (err) {
             console.error(err.message);
         }
         return result;
@@ -808,7 +840,7 @@ class AtSmsMessage {
                 udhi = new CharSequence(this.encodeUdhi());
                 udhlen = parseInt('0x' + udhi.read(2));
             }
-            if (this.dcs == sms.CODING_SCHEME.CS_UNKNOWN) {
+            if (this.dcs === sms.CODING_SCHEME.CS_UNKNOWN) {
                 this.dcs = sms.detectCodingScheme(str);
             }
             this.isSubmit = true;
@@ -837,19 +869,25 @@ class AtSmsMessage {
                  0          A status report is not requested
                  1          A status report is requested }
             */
-            if (options.requestStatus) header = header | BIT_5;
+            if (options.requestStatus) {
+                header = header | BIT_5;
+            }
             /*
             UDHI bit6
                  0          The UD field contains only the short message
                  1          The beginning of the UD field contains a header in addition of the short message }
             */
-            if (udhi) header = header | BIT_6;
+            if (udhi) {
+                header = header | BIT_6;
+            }
             /*
             RP   bit7
                  0          Reply Path parameter is not set in this PDU
                  1          Reply Path parameter is set in this PDU }
             */
-            if (options.requestReply) header = header | BIT_7;
+            if (options.requestReply) {
+                header = header | BIT_7;
+            }
             data.push(sms.hexPad(header.toString(16).toUpperCase(), 2));
             /*
             The MR field gives an integer (0..255) represeAtion of a reference number of the SMS-SUBMIT
@@ -910,7 +948,9 @@ class AtSmsMessage {
                     break;
             }
             // Have a message class meaning Class 0 Immediate display (alert)
-            if (options.flashMessage) dcs = dcs | BIT_4;
+            if (options.flashMessage) {
+                dcs = dcs | BIT_4;
+            }
             data.push(sms.hexPad(dcs.toString(16).toUpperCase(), 2));
             // TPVP
             let validity = sms.validityIndex(this.validity);
@@ -936,12 +976,16 @@ class AtSmsMessage {
                     }
                     break;
                 case sms.CODING_SCHEME.CS_8BIT:
-                    if (udhi) udhlen++;
+                    if (udhi) {
+                        udhlen++;
+                    }
                     msg = sms.gsmEncode8Bit(str);
                     msglen = (msg.length / 2) + udhlen;
                     break;
                 case sms.CODING_SCHEME.CS_UCS2:
-                    if (udhi) udhlen++;
+                    if (udhi) {
+                        udhlen++;
+                    }
                     msg = sms.gsmEncodeUcs2(str);
                     msglen = (msg.length / 2) + udhlen;
                     break;
@@ -963,7 +1007,8 @@ class AtSmsMessage {
             }
             this.pdu = sms.hexPad((smsc.length / 2).toString(16).toUpperCase()) + smsc + pdu;
             return true;
-        } catch (err) {
+        }
+        catch (err) {
             console.error(err.message);
         }
         return false;
@@ -975,9 +1020,9 @@ class AtSmsMessage {
             result.data = str;
             const seq = new CharSequence(str);
             const id = seq.readInt(2);
-            if (typeof id != 'undefined') {
+            if (id !== undefined) {
                 seq.read(2);
-                result.reference = seq.readInt(id == sms.SMS_16BIT_REF ? 4 : 2);
+                result.reference = seq.readInt(id === sms.SMS_16BIT_REF ? 4 : 2);
                 result.total = seq.readInt(2);
                 result.index = seq.readInt(2);
             }
@@ -987,13 +1032,13 @@ class AtSmsMessage {
 
     encodeUdhi(data) {
         let result = '';
-        if (typeof data == 'undefined') {
+        if (data === undefined) {
             data = this.udhi || {};
         }
-        if (typeof data.reference != 'undefined') {
+        if (data.reference !== undefined) {
             let type = data.reference > 0xff ? sms.SMS_16BIT_REF : sms.SMS_8BIT_REF;
             result = sms.hexPad(data.reference.toString(16).toUpperCase(),
-                type == sms.SMS_16BIT_REF ? 4 : 2);
+                type === sms.SMS_16BIT_REF ? 4 : 2);
             result += sms.hexPad(data.total.toString(16).toUpperCase(), 2);
             result += sms.hexPad(data.index.toString(16).toUpperCase(), 2);
             result = sms.hexPad((result.length / 2).toString(16).toUpperCase(), 2) + result;
@@ -1004,22 +1049,22 @@ class AtSmsMessage {
     }
 
     getReference() {
-        if (this.udhi && typeof this.udhi.reference != 'undefined') {
-            return this.udhi.reference;
+        if (this.udhi && this.udhi.reference !== undefined) {
+            return parseInt(this.udhi.reference);
         }
         return null;
     }
 
     getIndex() {
-        if (this.udhi && typeof this.udhi.index != 'undefined') {
-            return this.udhi.index;
+        if (this.udhi && this.udhi.index !== undefined) {
+            return parseInt(this.udhi.index);
         }
         return null;
     }
 
     getTotal() {
-        if (this.udhi && typeof this.udhi.total != 'undefined') {
-            return this.udhi.total;
+        if (this.udhi && this.udhi.total !== undefined) {
+            return parseInt(this.udhi.total);
         }
         return null;
     }
@@ -1079,7 +1124,7 @@ class AtSmsStatusReport {
              1101010..1101111 Reserved
              1110000..1111111 Values specific to each SC
         */
-        return this.status == 0 ? true : false;
+        return this.status === 0 ? true : false;
     }
 }
 
@@ -1087,6 +1132,6 @@ sms = new AtSms();
 
 module.exports = {
     AtSms: sms,
-    AtSmsMessage: AtSmsMessage,
-    AtSmsStatusReport: AtSmsStatusReport,
+    AtSmsMessage,
+    AtSmsStatusReport,
 }
