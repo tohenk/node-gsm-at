@@ -52,6 +52,7 @@ class AtGsm extends AtModem {
             emptyWhenFull: this.getConfig('emptyWhenFull', false)
         }
         this.sendTimeout = config.sendTimeout || 60000; // 60 seconds
+        this.ussdTimeout = config.ussdTimeout || 30000; // 30 seconds
         this.monitorInterval = config.monitorInterval || 600000; // 10 minutes
         this.on('process', response => this.doProcess(response));
         this.on('prop', () => this.processProps());
@@ -258,7 +259,7 @@ class AtGsm extends AtModem {
             this.processQueues(this.props.queues);
             delete this.props.queues;
         }
-        if (this.props.ussd && this.props.ussd.wait === undefined) {
+        if (this.props.ussd && this.props.ussdwait === undefined) {
             this.emit('ussd', this.props.ussd);
             delete this.props.ussd;
         }
@@ -722,7 +723,7 @@ class AtGsm extends AtModem {
         const waitPrompt = 1 === parseInt(this.getCmd(AtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT)) ? true : false;
         const works = [
             [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_MODE_SET, {SMS_MODE: AtConst.SMS_MODE_PDU}))],
-        ];
+        ]
         queues.forEach(msg => {
             const params = {
                 SMS_LEN: msg.tplen,
@@ -887,21 +888,58 @@ class AtGsm extends AtModem {
             }
             this.ussdCode = serviceCode;
             const enc = parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODING));
-            const params = {
-                SERVICE_NUMBER: 1 === parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
-                    this.encodeUssd(enc, serviceCode) : serviceCode,
-                ENC: enc
-            }
-            this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_SEND, params))
-                .then(res => {
-                    this.emit('ussd-dial', true, data);
+            const encoded = 1 === parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED));
+            const codes = serviceCode
+                .split(',')
+                .filter(code => code.trim().length > 0);
+            const res = [];
+            let error;
+            const q = new Queue(codes, code => {
+                if (codes.length) {
+                    if (this.props.ussdwait === undefined) {
+                        this.props.ussdwait = true;
+                    }
+                } else {
+                    delete this.props.ussdwait;
+                }
+                const works = [
+                    [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_SEND, {
+                        SERVICE_NUMBER: encoded ? this.encodeUssd(enc, code) : code,
+                        ENC: enc
+                    }))],
+                    [w => new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            reject(new Error(`Timed out waiting USSD response: ${code}!`));
+                        }, this.ussdTimeout);
+                        const f = () => {
+                            if (this.props.ussd) {
+                                clearTimeout(timeout);
+                                res.push(Object.assign({}, this.props.ussd));
+                                delete this.props.ussd;
+                                resolve();
+                            } else {
+                                setTimeout(f, 500);
+                            }
+                        }
+                        f();
+                    }), w => codes.length], 
+                ]
+                Work.works(works)
+                    .then(() => q.next())
+                    .catch(err => {
+                        error = err;
+                        q.done();
+                    })
+                ;
+            });
+            q.once('done', () => {
+                this.emit('ussd-dial', error ? false : true, data);
+                if (error) {
+                    reject(error);
+                } else {
                     resolve(res);
-                })
-                .catch(err => {
-                    this.emit('ussd-dial', false, data);
-                    reject(err);
-                })
-            ;
+                }
+            });
         });
     }
 

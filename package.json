@@ -1,6 +1,6 @@
 {
   "name": "@ntlab/gsm-at",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "A GSM AT library",
   "main": "index.js",
   "scripts": {

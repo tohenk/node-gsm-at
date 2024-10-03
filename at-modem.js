@@ -433,7 +433,7 @@ class AtResponse {
             AtDriverConstants.AT_RESPONSE_NOT_SUPPORTED,
             AtDriverConstants.AT_RESPONSE_CME_ERROR,
             AtDriverConstants.AT_RESPONSE_CMS_ERROR,
-        ];
+        ]
         if (this.getMatch(responses, commands)) {
             if ([AtDriverConstants.AT_RESPONSE_CME_ERROR,
                     AtDriverConstants.AT_RESPONSE_CMS_ERROR]
