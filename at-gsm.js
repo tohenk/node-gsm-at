@@ -42,6 +42,7 @@ class AtGsm extends AtModem {
         super(name, stream, config);
         this.processor = new AtProcessor(this);
         this.info = {};
+        this.storages = {};
         this.messages = [];
         this.options = {
             deleteMessageOnRead: this.getConfig('deleteMessageOnRead', false),
@@ -284,6 +285,7 @@ class AtGsm extends AtModem {
             delete this.props.caller;
         }
         if (this.props.storages && !this.props.memfull) {
+            Object.assign(this.storages, this.props.storages);
             Object.keys(this.props.storages).every(storage => {
                 if (this.props.storages[storage].used === this.props.storages[storage].total) {
                     this.props.memfull = storage;
@@ -292,6 +294,7 @@ class AtGsm extends AtModem {
                     return true;
                 }
             });
+            this.emit('storage');
             delete this.props.storages;
         }
         if (this.props.memfull) {
@@ -888,7 +891,7 @@ class AtGsm extends AtModem {
                 SERVICE_NUMBER: 1 === parseInt(this.getCmd(AtDriverConstants.AT_PARAM_USSD_ENCODED)) ?
                     this.encodeUssd(enc, serviceCode) : serviceCode,
                 ENC: enc
-            };
+            }
             this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_USSD_SEND, params))
                 .then(res => {
                     this.emit('ussd-dial', true, data);
