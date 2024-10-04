@@ -38,50 +38,39 @@ let msgref = 0;
  */
 class AtGsm extends AtModem {
 
+    defaultOptions = {
+        deleteMessageOnRead: false,
+        requestMessageStatus: true,
+        requestMessageReply: false,
+        sendMessageAsFlash: false,
+        emptyWhenFull: false,
+    }
+    props = {
+        friendlyName: AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
+        manufacturer: AtDriverConstants.AT_CMD_Q_MANUFACTURER,
+        model: AtDriverConstants.AT_CMD_Q_MODEL,
+        version: AtDriverConstants.AT_CMD_Q_VERSION,
+        serial: AtDriverConstants.AT_CMD_Q_IMEI,
+        imsi: AtDriverConstants.AT_CMD_Q_IMSI,
+        hasCall: AtDriverConstants.AT_CMD_CALL_MONITOR,
+        hasSms: AtDriverConstants.AT_CMD_SMS_MONITOR,
+        hasUssd: AtDriverConstants.AT_CMD_USSD_SET,
+        process: AtDriverConstants.AT_CMD_CHARSET_LIST,
+    }
+
     constructor(name, stream, config) {
         super(name, stream, config);
         this.processor = new AtProcessor(this);
         this.info = {};
         this.storages = {};
         this.messages = [];
-        this.options = {
-            deleteMessageOnRead: this.getConfig('deleteMessageOnRead', false),
-            requestMessageStatus: this.getConfig('requestMessageStatus', true),
-            requestMessageReply: this.getConfig('requestMessageReply', false),
-            sendMessageAsFlash: this.getConfig('sendMessageAsFlash', false),
-            emptyWhenFull: this.getConfig('emptyWhenFull', false)
-        }
+        this.options = this.getConfigs(this.defaultOptions);
         this.sendTimeout = config.sendTimeout || 60000; // 60 seconds
         this.ussdTimeout = config.ussdTimeout || 30000; // 30 seconds
         this.monitorInterval = config.monitorInterval || 600000; // 10 minutes
         this.on('process', response => this.doProcess(response));
         this.on('prop', () => this.processProps());
-        this.on('state', () => {
-            if (this.idle) {
-                if (this.memfull && !this.memfullProcessing) {
-                    this.memfullProcessing = true;
-                    try {
-                        if (this.options.emptyWhenFull) {
-                            this.debug('!! %s: Emptying full storage %s', this.name, this.memfull);
-                            this.emptyStorage(this.memfull)
-                                .then(() => {
-                                    this.memfull = null;
-                                    this.memfullProcessing = false;
-                                })
-                            ;
-                        } else {
-                            this.debug('!! %s: ATTENTION, storage %s is full', this.name, this.memfull);
-                            this.memfull = null;
-                        }
-                    }
-                    catch (err) {
-                        console.error(err);
-                    }
-                } else {
-                    this.checkQueues();
-                }
-            }
-        });
+        this.on('state', () => this.processStates());
     }
 
     initialize() {
@@ -99,48 +88,35 @@ class AtGsm extends AtModem {
     }
 
     doInitialize() {
-        const queues = [AtDriverConstants.AT_CMD_INIT];
-        for (let i = 1; i < 10; i++) {
-            queues.push(AtDriverConstants.AT_CMD_INIT + i.toString());
-        }
+        const queues = Array.from({length: 10}, (_, i) => AtDriverConstants.AT_CMD_INIT + (i > 0 ? i.toString() : ''));
         return this.txqueue(queues);
     }
 
     doQueryInfo() {
         return new Promise((resolve, reject) => {
-            this.txqueue([
-                // information
-                AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
-                AtDriverConstants.AT_CMD_Q_MANUFACTURER,
-                AtDriverConstants.AT_CMD_Q_MODEL,
-                AtDriverConstants.AT_CMD_Q_VERSION,
-                AtDriverConstants.AT_CMD_Q_IMEI,
-                AtDriverConstants.AT_CMD_Q_IMSI,
-                // features
-                AtDriverConstants.AT_CMD_CALL_MONITOR,
-                AtDriverConstants.AT_CMD_SMS_MONITOR,
-                AtDriverConstants.AT_CMD_USSD_SET,
-                // charsets
-                AtDriverConstants.AT_CMD_CHARSET_LIST
-            ])
-            .then(res => {
-                Object.assign(this.info, this.getResult({
-                    friendlyName: AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
-                    manufacturer: AtDriverConstants.AT_CMD_Q_MANUFACTURER,
-                    model: AtDriverConstants.AT_CMD_Q_MODEL,
-                    version: AtDriverConstants.AT_CMD_Q_VERSION,
-                    serial: AtDriverConstants.AT_CMD_Q_IMEI,
-                    imsi: AtDriverConstants.AT_CMD_Q_IMSI}, res));
-                Object.assign(this.info, this.getResult({
-                    hasCall: AtDriverConstants.AT_CMD_CALL_MONITOR,
-                    hasSms: AtDriverConstants.AT_CMD_SMS_MONITOR,
-                    hasUssd: AtDriverConstants.AT_CMD_USSD_SET}, res, true));
-                if (res[AtDriverConstants.AT_CMD_CHARSET_LIST] && res[AtDriverConstants.AT_CMD_CHARSET_LIST].hasResponse()) {
-                    this.doProcess(res[AtDriverConstants.AT_CMD_CHARSET_LIST].responses);
-                }
-                resolve();
-            })
-            .catch(err => reject(err));
+            this.txqueue(Object.values(this.props))
+                .then(res => {
+                    const propInfos = {}, stateInfos = {}, procInfos = {};
+                    Object.keys(this.props).forEach(prop => {
+                        const value = this.props[prop];
+                        if (prop.startsWith('process')) {
+                            procInfos[prop] = value;
+                        } else if (prop.startsWith('has')) {
+                            stateInfos[prop] = value;
+                        } else {
+                            propInfos[prop] = value;
+                        }
+                    });
+                    Object.assign(this.info, this.getResult(propInfos, res), this.getResult(stateInfos, res, true));
+                    Object.keys(procInfos).forEach(prop => {
+                        const value = procInfos[prop];
+                        if (res[value] && res[value].hasResponse()) {
+                            this.doProcess(res[value].responses);
+                        }
+                    });
+                    resolve();
+                })
+                .catch(err => reject(err));
         });
     }
 
@@ -160,14 +136,23 @@ class AtGsm extends AtModem {
 
     attachSignalMonitor() {
         return this.attachMonitor('CSQ', AtDriverConstants.AT_RESPONSE_RSSI, () => {
-            return this.query(this.getCmd(AtDriverConstants.AT_CMD_CSQ));
+            this.query(this.getCmd(AtDriverConstants.AT_CMD_CSQ))
+                .catch(err => console.error(err));
         });
     }
 
     attachMemfullMonitor() {
         return this.attachMonitor('MEMFULL', AtDriverConstants.AT_RESPONSE_MEM_FULL, () => {
             if (!this.memfullProcessing) {
-                return this.query(this.getCmd(AtDriverConstants.AT_CMD_SMS_STORAGE_GET));
+                [
+                    AtDriverConstants.AT_PARAM_SMS_STORAGE,
+                    AtDriverConstants.AT_PARAM_REPORT_STORAGE,
+                ].forEach(cmd => {
+                    const storage = this.getCmd(cmd);
+                    if (storage) {
+                        this.getStorageQueued(storage);
+                    }
+                });
             }
         });
     }
@@ -249,6 +234,47 @@ class AtGsm extends AtModem {
         }
     }
 
+    processStates() {
+        if (this.idle) {
+            if (this.memfull && !this.memfullProcessing) {
+                this.memfullProcessing = true;
+                try {
+                    const storages = Array.isArray(this.memfull) ? this.memfull : [this.memfull];
+                    const q = new Queue(storages, storage => {
+                        this.debug('!! %s: Doing task storage full on %s', this.name, storage);
+                        if (storage === this.getCmd(AtDriverConstants.AT_PARAM_SMS_STORAGE)) {
+                            if (this.options.emptyWhenFull) {
+                                this.debug('!! %s: Emptying full storage %s', this.name, storage);
+                                this.emptyStorage(storage)
+                                    .then(() => q.next())
+                                ;
+                            } else {
+                                this.debug('!! %s: ATTENTION, storage %s is full', this.name, storage);
+                                q.next();
+                            }
+                        }
+                        if (storage === this.getCmd(AtDriverConstants.AT_PARAM_REPORT_STORAGE)) {
+                            Work.works([
+                                [w => this.setStorage(storage)],
+                                [w => this.listMessage(AtConst.SMS_STAT_RECV_READ)],
+                            ], {alwaysResolved: true})
+                                .then(() => q.next());
+                        }
+                    });
+                    q.once('done', () => {
+                        this.memfull = null;
+                        this.memfullProcessing = false;
+                    });
+                }
+                catch (err) {
+                    console.error(err);
+                }
+            } else {
+                this.checkQueues();
+            }
+        }
+    }
+
     processProps() {
         if (this.props.messages) {
             this.messages.push(...this.props.messages);
@@ -287,12 +313,13 @@ class AtGsm extends AtModem {
         }
         if (this.props.storages && !this.props.memfull) {
             Object.assign(this.storages, this.props.storages);
-            Object.keys(this.props.storages).every(storage => {
+            Object.keys(this.props.storages).forEach(storage => {
                 if (this.props.storages[storage].used === this.props.storages[storage].total) {
-                    this.props.memfull = storage;
-                    return false;
-                } else {
-                    return true;
+                    if (!this.props.memfull) {
+                        this.props.memfull = [storage]
+                    } else {
+                        this.props.memfull.push(storage);
+                    }
                 }
             });
             this.emit('storage');
@@ -301,7 +328,7 @@ class AtGsm extends AtModem {
         if (this.props.memfull) {
             if (this.memfull !== this.props.memfull) {
                 this.memfull = this.props.memfull;
-                this.debug('%s: Storage %s is full', this.name, this.memfull);
+                this.debug('%s: Storage %s is full', this.name, (Array.isArray(this.memfull) ? this.memfull : [this.memfull]).join(', '));
             }
             delete this.props.memfull;
         }

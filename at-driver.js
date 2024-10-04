@@ -39,6 +39,7 @@ class AtDriverConstants {
     static get AT_PARAM_SMS_CANCEL()                { return 'PARAM_SMS_CANCEL' }
     static get AT_PARAM_SMS_STORAGE()               { return 'PARAM_SMS_STORAGE' }
     static get AT_PARAM_SMS_WAIT_PROMPT()           { return 'PARAM_SMS_WAIT_PROMPT' }
+    static get AT_PARAM_REPORT_STORAGE()            { return 'PARAM_REPORT_STORAGE' }
     static get AT_PARAM_USSD_ENCODED()              { return 'PARAM_USSD_ENCODED' }
     static get AT_PARAM_USSD_ENCODING()             { return 'PARAM_USSD_ENCODING' }
     static get AT_PARAM_USSD_RESPONSE_ENCODED()     { return 'PARAM_USSD_RESPONSE_ENCODED' }
@@ -133,6 +134,7 @@ class AtDriver {
         this.add(AtDriverConstants.AT_PARAM_SMS_CANCEL,                 String.fromCharCode(0x1b));
         this.add(AtDriverConstants.AT_PARAM_SMS_STORAGE,                '%NONE%');
         this.add(AtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT,            '1');
+        this.add(AtDriverConstants.AT_PARAM_REPORT_STORAGE,             '%NONE%');
         this.add(AtDriverConstants.AT_PARAM_USSD_ENCODED,               '0');
         this.add(AtDriverConstants.AT_PARAM_USSD_ENCODING,              AtConst.USSD_ENC_7BIT.toString());
         this.add(AtDriverConstants.AT_PARAM_USSD_RESPONSE_ENCODED,      '0');
@@ -203,7 +205,7 @@ class AtDriver {
     }
 
     import(commands) {
-        if (typeof commands !== undefined) {
+        if (commands !== undefined) {
             for (const cmd in commands) {
                 this.add(cmd, commands[cmd]);
             }

@@ -55,6 +55,14 @@ class AtModem extends EventEmitter {
         this.stream.on('data', data => this.rx(data));
     }
 
+    getConfigs(configDefaultValues) {
+        const res = {};
+        Object.keys(configDefaultValues).forEach(name => {
+            res[name] = this.getConfig(name, configDefaultValues[name]);
+        });
+        return res;
+    }
+
     getConfig(name, defaultValue) {
         if (this.config && this.config[name] !== undefined) {
             return this.config[name];
