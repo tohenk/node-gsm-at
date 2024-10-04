@@ -63,9 +63,10 @@ class AtGsm extends AtModem {
                     try {
                         if (this.options.emptyWhenFull) {
                             this.debug('!! %s: Emptying full storage %s', this.name, this.memfull);
-                            this.emptyStorage(this.memfull, false)
+                            this.emptyStorage(this.memfull)
                                 .then(() => {
                                     this.memfull = null;
+                                    this.memfullProcessing = false;
                                 })
                             ;
                         } else {
@@ -76,7 +77,6 @@ class AtGsm extends AtModem {
                     catch (err) {
                         console.error(err);
                     }
-                    this.memfullProcessing = false;
                 } else {
                     this.checkQueues();
                 }
