@@ -488,24 +488,26 @@ class AtGsm extends AtModem {
                 // is all message parts found?
                 if (count === total) {
                     processed = true;
-                    pos = Object.keys(parts);
-                    const messages = Object.values(parts).sort((a, b) => a.getIndex() - b.getIndex());
-                    let address = null;
-                    let time = null;
-                    let content = '';
-                    messages.forEach(message => {
-                        if (null === address) {
-                            address = message.address;
-                        }
-                        if (null === time) {
-                            time = message.time;
-                        }
-                        content += message.message;
-                    });
-                    const hash = this.getHash(time, this.intlNumber(address), content);
-                    messages.forEach(message => {
-                        message.hash = hash;
-                    });
+                    // process long messages
+                    if (total > 1) {
+                        pos = Object.keys(parts);
+                        msg = Object.values(parts).sort((a, b) => a.getIndex() - b.getIndex());
+                        let address = null, time = null, content = '';
+                        msg.forEach(message => {
+                            if (null === address) {
+                                address = message.address;
+                            }
+                            if (null === time) {
+                                time = message.time;
+                            }
+                            content += message.message;
+                        });
+                        const hash = this.getHash(time, this.intlNumber(address), content);
+                        msg.forEach(message => {
+                            message.hash = hash;
+                        });
+                        this.debug('%s: Mesage from %s completed, found %d/%d', this.name, address, count, total);
+                    }
                 }
             }
         }
