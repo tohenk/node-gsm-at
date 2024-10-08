@@ -24,13 +24,17 @@
 
 const EventEmitter = require('events');
 const path = require('path');
-const { Queue, Work } = require('@ntlab/work');
 const ntutil = require('@ntlab/ntlib/util');
 const Logger = require('@ntlab/ntlib/logger');
-const { AtDriver, AtDriverConstants } = require('./at-driver');
+const AtDriver = require('./at-driver');
+const AtDriverConstants = require('./at-driver-const');
+const Queue = require('@ntlab/work/queue');
+const Work = require('@ntlab/work/work');
 
 /**
  * AT modem handles AT commands with underlying stream.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtModem extends EventEmitter {
 
@@ -71,7 +75,7 @@ class AtModem extends EventEmitter {
     }
 
     useDriver(name) {
-        const driver = AtDriver.get(name);
+        const driver = AtModem.getDrivers().get(name);
         if (driver === undefined) {
             throw new Error('Unknown driver ' + name);
         }
@@ -80,12 +84,12 @@ class AtModem extends EventEmitter {
 
     detect() {
         return Work.works([
-            [w => Promise.resolve(this.useDriver('Generic'))],
+            [w => Promise.resolve(this.useDriver(AtDriverConstants.DefaultDriver))],
             [w => this.tx('AT', {timeout: 1000})],
             [w => this.tx(this.getCmd(AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME))],
             [w => new Promise((resolve, reject) => {
                 const result = w.getRes(2);
-                let driver = AtDriver.match(result.res());
+                let driver = AtModem.getDrivers().match(result.res());
                 driver = driver.length ? driver : this.driver.name;
                 if (driver.length) {
                     this.detected = true;
@@ -228,24 +232,23 @@ class AtModem extends EventEmitter {
         this.qres.requeue([data]);
     }
 
-    getCmd(cmd, vars) {
-        cmd = this.driver.get(cmd);
-        if (cmd !== undefined) {
-            // substitude character => $XX
-            let match;
-            while (match = cmd.match(/\$([a-zA-Z0-9]{2})/)) {
-                cmd = cmd.substr(0, match.index) + String.fromCharCode(parseInt('0x' + match[1])) +
-                    cmd.substr(match.index + match[0].length);
-            }
-            // replace place holder
-            const replacements = {'NONE': '', 'CR': '\r', 'LF': '\n'};
-            if (vars) {
-                Object.keys(vars).forEach(key => {
-                    replacements[key] = vars[key];
-                });
-            }
-            return ntutil.trans(cmd, replacements);
+    /**
+     * Get command.
+     *
+     * @param {string} cmd Command key
+     * @param {object} vars Command variable replacements
+     * @param {AtDriver.AtDriver} driver The driver
+     * @returns {string}
+     */
+    getCmd(cmd, vars, driver = null) {
+        if (vars instanceof AtDriver.AtDriver) {
+            driver = vars;
+            vars = {};
         }
+        if (driver === null) {
+            driver = this.driver;
+        }
+        return driver.get(cmd, vars);
     }
 
     getResult(cmds, res, status) {
@@ -256,7 +259,7 @@ class AtModem extends EventEmitter {
                 if (status !== undefined && status) {
                     result[prop] = res[cmd].okay ? true : false;
                 } else {
-                    result[prop] = res[cmd].res();
+                    result[prop] = res[cmd].res().trim();
                 }
             }
         }
@@ -288,10 +291,30 @@ class AtModem extends EventEmitter {
         }
         return this.debugger;
     }
+
+    /**
+     * Get driver repository.
+     *
+     * @returns {AtDriver.AtDrivers}
+     */
+    static getDrivers() {
+        return AtModem.drivers;
+    }
+
+    /**
+     * Set modem driver.
+     *
+     * @param {AtDriver.AtDrivers} drivers Driver repository
+     */
+    static setDrivers(drivers) {
+        AtModem.drivers = drivers;
+    }
 }
 
 /**
  * AT response data.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtResponse {
 

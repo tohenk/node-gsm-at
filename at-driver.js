@@ -24,212 +24,102 @@
 
 const fs = require('fs');
 const ini = require('ini');
-const AtConst = require('./at-const');
-
-/**
- * AT driver constants.
- */
-class AtDriverConstants {
-
-    static get AT_PARAM_TERMINATOR()                { return 'PARAM_TERMINATOR' }
-    static get AT_PARAM_DEVICE_NAME()               { return 'PARAM_DEVICE_NAME' }
-    static get AT_PARAM_KEYPAD_CHARSET()            { return 'PARAM_KEYPAD_CHARSET' }
-    static get AT_PARAM_SMS_MODE()                  { return 'PARAM_SMS_MODE' }
-    static get AT_PARAM_SMS_COMMIT()                { return 'PARAM_SMS_COMMIT' }
-    static get AT_PARAM_SMS_CANCEL()                { return 'PARAM_SMS_CANCEL' }
-    static get AT_PARAM_SMS_STORAGE()               { return 'PARAM_SMS_STORAGE' }
-    static get AT_PARAM_SMS_WAIT_PROMPT()           { return 'PARAM_SMS_WAIT_PROMPT' }
-    static get AT_PARAM_REPORT_STORAGE()            { return 'PARAM_REPORT_STORAGE' }
-    static get AT_PARAM_USSD_ENCODED()              { return 'PARAM_USSD_ENCODED' }
-    static get AT_PARAM_USSD_ENCODING()             { return 'PARAM_USSD_ENCODING' }
-    static get AT_PARAM_USSD_RESPONSE_ENCODED()     { return 'PARAM_USSD_RESPONSE_ENCODED' }
-    static get AT_CMD_INIT()                        { return 'CMD_INIT' }
-    static get AT_CMD_Q_FRIENDLY_NAME()             { return 'CMD_QUERY_FRIENDLY_NAME' }
-    static get AT_CMD_Q_MANUFACTURER()              { return 'CMD_QUERY_MANUFACTURER' }
-    static get AT_CMD_Q_MODEL()                     { return 'CMD_QUERY_MODEL' }
-    static get AT_CMD_Q_VERSION()                   { return 'CMD_QUERY_VERSION' }
-    static get AT_CMD_Q_IMEI()                      { return 'CMD_QUERY_IMEI' }
-    static get AT_CMD_Q_IMSI()                      { return 'CMD_QUERY_IMSI' }
-    static get AT_CMD_Q_SMSC()                      { return 'CMD_QUERY_SMSC' }
-    static get AT_CMD_DIAL()                        { return 'CMD_DIAL' }
-    static get AT_CMD_ANSWER()                      { return 'CMD_ANSWER' }
-    static get AT_CMD_HANGUP()                      { return 'CMD_HANGUP' }
-    static get AT_CMD_CALL_MONITOR()                { return 'CMD_CALL_MONITOR' }
-    static get AT_CMD_SMS_MONITOR()                 { return 'CMD_SMS_MONITOR' }
-    static get AT_CMD_SMS_STORAGE_GET()             { return 'CMD_SMS_STORAGE_GET' }
-    static get AT_CMD_SMS_STORAGE_SET()             { return 'CMD_SMS_STORAGE_SET' }
-    static get AT_CMD_SMS_READ()                    { return 'CMD_SMS_READ' }
-    static get AT_CMD_SMS_DELETE()                  { return 'CMD_SMS_DELETE' }
-    static get AT_CMD_SMS_LIST()                    { return 'CMD_SMS_LIST' }
-    static get AT_CMD_SMS_MODE_SET()                { return 'CMD_SMS_MODE_SET' }
-    static get AT_CMD_SMS_MODE_GET()                { return 'CMD_SMS_MODE_GET' }
-    static get AT_CMD_SMS_SEND_PDU()                { return 'CMD_SMS_SEND_PDU' }
-    static get AT_CMD_SMS_SEND_TEXT()               { return 'CMD_SMS_SEND_TEXT' }
-    static get AT_CMD_SMS_SEND_COMMIT()             { return 'CMD_SMS_SEND_COMMIT' }
-    static get AT_CMD_USSD_SET()                    { return 'CMD_USSD_SET' }
-    static get AT_CMD_USSD_CANCEL()                 { return 'CMD_USSD_CANCEL' }
-    static get AT_CMD_USSD_SEND()                   { return 'CMD_USSD_SEND' }
-    static get AT_CMD_KEYPAD()                      { return 'CMD_KEYPAD' }
-    static get AT_CMD_KEYPAD_ACCESS()               { return 'CMD_KEYPAD_ACCESS' }
-    static get AT_CMD_KEYPAD_LOCK()                 { return 'CMD_KEYPAD_LOCK' }
-    static get AT_CMD_CSQ()                         { return 'CMD_CSQ' }
-    static get AT_CMD_CHARSET_LIST()                { return 'CMD_CHARSET_LIST' }
-    static get AT_CMD_CHARSET_GET()                 { return 'CMD_CHARSET_GET' }
-    static get AT_CMD_CHARSET_SET()                 { return 'CMD_CHARSET_SET' }
-    static get AT_CMD_NETWORK_LIST()                { return 'CMD_NETWORK_LIST' }
-    static get AT_CMD_NETWORK_GET()                 { return 'CMD_NETWORK_GET' }
-    static get AT_RESPONSE_OK()                     { return 'RESPONSE_OK' }
-    static get AT_RESPONSE_ERROR()                  { return 'RESPONSE_ERROR' }
-    static get AT_RESPONSE_RING()                   { return 'RESPONSE_RING' }
-    static get AT_RESPONSE_NO_CARRIER()             { return 'RESPONSE_NO_CARRIER' }
-    static get AT_RESPONSE_NOT_SUPPORTED()          { return 'RESPONSE_NOT_SUPPORTED' }
-    static get AT_RESPONSE_SMSC()                   { return 'RESPONSE_SMSC' }
-    static get AT_RESPONSE_SMS_PROMPT()             { return 'RESPONSE_SMS_PROMPT' }
-    static get AT_RESPONSE_NEW_MESSAGE()            { return 'RESPONSE_NEW_MESSAGE' }
-    static get AT_RESPONSE_NEW_MESSAGE_DIRECT()     { return 'RESPONSE_NEW_MESSAGE_DIRECT' }
-    static get AT_RESPONSE_DELIVERY_REPORT()        { return 'RESPONSE_DELIVERY_REPORT' }
-    static get AT_RESPONSE_DELIVERY_REPORT_DIRECT() { return 'RESPONSE_DELIVERY_REPORT_DIRECT' }
-    static get AT_RESPONSE_CPMS()                   { return 'RESPONSE_CPMS' }
-    static get AT_RESPONSE_CMGF()                   { return 'RESPONSE_CMGF' }
-    static get AT_RESPONSE_CMGR()                   { return 'RESPONSE_CMGR' }
-    static get AT_RESPONSE_CMGL()                   { return 'RESPONSE_CMGL' }
-    static get AT_RESPONSE_CMGS()                   { return 'RESPONSE_CMGS' }
-    static get AT_RESPONSE_CLIP()                   { return 'RESPONSE_CLIP' }
-    static get AT_RESPONSE_CUSD()                   { return 'RESPONSE_CUSD' }
-    static get AT_RESPONSE_CSCS()                   { return 'RESPONSE_CSCS' }
-    static get AT_RESPONSE_CLCK()                   { return 'RESPONSE_CLCK' }
-    static get AT_RESPONSE_CSQ()                    { return 'RESPONSE_CSQ' }
-    static get AT_RESPONSE_RSSI()                   { return 'RESPONSE_RSSI' }
-    static get AT_RESPONSE_CALL_END()               { return 'RESPONSE_CALL_END' }
-    static get AT_RESPONSE_COPS()                   { return 'RESPONSE_COPS' }
-    static get AT_RESPONSE_MEM_FULL()               { return 'RESPONSE_MEM_FULL' }
-    static get AT_RESPONSE_STK()                    { return 'RESPONSE_STK' }
-    static get AT_RESPONSE_CME_ERROR()              { return 'RESPONSE_CME_ERROR' }
-    static get AT_RESPONSE_CMS_ERROR()              { return 'RESPONSE_CMS_ERROR' }
-}
+const ntutil = require('@ntlab/ntlib/util');
 
 /**
  * AT communication driver.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtDriver {
 
-    constructor(parent = null) {
-        this.name = 'Generic';
-        this.desc = 'Generic';
-        this.parent = null;
-        this.commands = {};
-        this.init();
+    /** @type {string} */
+    name = 'Generic'
+    /** @type {string} */
+    desc = 'Generic'
+    /** @type {AtDriver} */
+    parent = null
+    /** @type {object} */
+    commands = {}
+
+    /**
+     * Constructor.
+     *
+     * @param {object} driver Driver constants
+     * @param {AtDriver} parent Driver parent
+     */
+    constructor(driver, parent = null) {
+        this.import(driver.defaults());
         if (parent && parent.constructor && parent.constructor.name === this.constructor.name) {
             this.parent = parent;
             this.import(this.parent.commands);
         }
     }
 
-    init() {
-        this.add(AtDriverConstants.AT_PARAM_TERMINATOR,                 '%CR%%LF%');
-        this.add(AtDriverConstants.AT_PARAM_DEVICE_NAME,                '%MANUF% %MODEL%');
-        this.add(AtDriverConstants.AT_PARAM_KEYPAD_CHARSET,             '%NONE%');
-        this.add(AtDriverConstants.AT_PARAM_SMS_MODE,                   AtConst.SMS_MODE_PDU.toString());
-        this.add(AtDriverConstants.AT_PARAM_SMS_COMMIT,                 String.fromCharCode(0x1a));
-        this.add(AtDriverConstants.AT_PARAM_SMS_CANCEL,                 String.fromCharCode(0x1b));
-        this.add(AtDriverConstants.AT_PARAM_SMS_STORAGE,                '%NONE%');
-        this.add(AtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT,            '1');
-        this.add(AtDriverConstants.AT_PARAM_REPORT_STORAGE,             '%NONE%');
-        this.add(AtDriverConstants.AT_PARAM_USSD_ENCODED,               '0');
-        this.add(AtDriverConstants.AT_PARAM_USSD_ENCODING,              AtConst.USSD_ENC_7BIT.toString());
-        this.add(AtDriverConstants.AT_PARAM_USSD_RESPONSE_ENCODED,      '0');
-        this.add(AtDriverConstants.AT_CMD_INIT,                         'ATZ');
-        this.add(AtDriverConstants.AT_CMD_INIT + '1',                   'ATE0');
-        this.add(AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,              'ATI');
-        this.add(AtDriverConstants.AT_CMD_Q_MANUFACTURER,               'AT+CGMI');
-        this.add(AtDriverConstants.AT_CMD_Q_MODEL,                      'AT+CGMM');
-        this.add(AtDriverConstants.AT_CMD_Q_VERSION,                    'AT+CGMR');
-        this.add(AtDriverConstants.AT_CMD_Q_IMEI,                       'AT+CGSN');
-        this.add(AtDriverConstants.AT_CMD_Q_IMSI,                       'AT+CIMI');
-        this.add(AtDriverConstants.AT_CMD_Q_SMSC,                       'AT+CSCA?');
-        this.add(AtDriverConstants.AT_CMD_CALL_MONITOR,                 'AT+CLIP=1');
-        this.add(AtDriverConstants.AT_CMD_SMS_MONITOR,                  'AT+CNMI=2,1,,2');
-        this.add(AtDriverConstants.AT_CMD_DIAL,                         'ATD%PHONE_NUMBER%;');
-        this.add(AtDriverConstants.AT_CMD_ANSWER,                       'ATA');
-        this.add(AtDriverConstants.AT_CMD_HANGUP,                       'ATH');
-        this.add(AtDriverConstants.AT_CMD_SMS_STORAGE_GET,              'AT+CPMS?');
-        this.add(AtDriverConstants.AT_CMD_SMS_STORAGE_SET,              'AT+CPMS="%STORAGE%"');
-        this.add(AtDriverConstants.AT_CMD_SMS_READ,                     'AT+CMGR=%SMS_ID%');
-        this.add(AtDriverConstants.AT_CMD_SMS_DELETE,                   'AT+CMGD=%SMS_ID%');
-        this.add(AtDriverConstants.AT_CMD_SMS_LIST,                     'AT+CMGL=%SMS_STAT%');
-        this.add(AtDriverConstants.AT_CMD_SMS_MODE_GET,                 'AT+CMGF?');
-        this.add(AtDriverConstants.AT_CMD_SMS_MODE_SET,                 'AT+CMGF=%SMS_MODE%');
-        this.add(AtDriverConstants.AT_CMD_SMS_SEND_PDU,                 'AT+CMGS=%SMS_LEN%');
-        this.add(AtDriverConstants.AT_CMD_SMS_SEND_TEXT,                'AT+CMGS="%PHONE_NUMBER%"');
-        this.add(AtDriverConstants.AT_CMD_SMS_SEND_COMMIT,              '%MESSAGE%%COMMIT%');
-        this.add(AtDriverConstants.AT_CMD_USSD_SET,                     'AT+CUSD=1');
-        this.add(AtDriverConstants.AT_CMD_USSD_CANCEL,                  'AT+CUSD=2');
-        this.add(AtDriverConstants.AT_CMD_USSD_SEND,                    'AT+CUSD=1,%SERVICE_NUMBER%,%ENC%');
-        this.add(AtDriverConstants.AT_CMD_KEYPAD,                       'AT+CKPD="%KEYS%"');
-        this.add(AtDriverConstants.AT_CMD_KEYPAD_ACCESS,                'AT+CMEC=2');
-        this.add(AtDriverConstants.AT_CMD_KEYPAD_LOCK,                  'AT+CLCK="CS",%VALUE%');
-        this.add(AtDriverConstants.AT_CMD_CSQ,                          'AT+CSQ');
-        this.add(AtDriverConstants.AT_CMD_CHARSET_LIST,                 'AT+CSCS=?');
-        this.add(AtDriverConstants.AT_CMD_CHARSET_GET,                  'AT+CSCS?');
-        this.add(AtDriverConstants.AT_CMD_CHARSET_SET,                  'AT+CSCS="%CHARSET%"');
-        this.add(AtDriverConstants.AT_CMD_NETWORK_LIST,                 'AT+COPS=?');
-        this.add(AtDriverConstants.AT_CMD_NETWORK_GET,                  'AT+COPS?');
-        this.add(AtDriverConstants.AT_RESPONSE_OK,                      'OK');
-        this.add(AtDriverConstants.AT_RESPONSE_ERROR,                   'ERROR');
-        this.add(AtDriverConstants.AT_RESPONSE_RING,                    'RING');
-        this.add(AtDriverConstants.AT_RESPONSE_NO_CARRIER,              'NO CARRIER');
-        this.add(AtDriverConstants.AT_RESPONSE_NOT_SUPPORTED,           'COMMAND NOT SUPPORT');
-        this.add(AtDriverConstants.AT_RESPONSE_SMSC,                    '+CSCA:');
-        this.add(AtDriverConstants.AT_RESPONSE_SMS_PROMPT,              '> ');
-        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE,             '+CMTI:');
-        this.add(AtDriverConstants.AT_RESPONSE_NEW_MESSAGE_DIRECT,      '+CMT:');
-        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT,         '+CDSI:');
-        this.add(AtDriverConstants.AT_RESPONSE_DELIVERY_REPORT_DIRECT,  '+CDS:');
-        this.add(AtDriverConstants.AT_RESPONSE_CPMS,                    '+CPMS:');
-        this.add(AtDriverConstants.AT_RESPONSE_CMGF,                    '+CMGF:');
-        this.add(AtDriverConstants.AT_RESPONSE_CMGR,                    '+CMGR:');
-        this.add(AtDriverConstants.AT_RESPONSE_CMGL,                    '+CMGL:');
-        this.add(AtDriverConstants.AT_RESPONSE_CMGS,                    '+CMGS:');
-        this.add(AtDriverConstants.AT_RESPONSE_CLIP,                    '+CLIP:');
-        this.add(AtDriverConstants.AT_RESPONSE_CUSD,                    '+CUSD:');
-        this.add(AtDriverConstants.AT_RESPONSE_CSCS,                    '+CSCS:');
-        this.add(AtDriverConstants.AT_RESPONSE_CLCK,                    '+CLCK:');
-        this.add(AtDriverConstants.AT_RESPONSE_CSQ,                     '+CSQ:');
-        this.add(AtDriverConstants.AT_RESPONSE_RSSI,                    '%NONE%');
-        this.add(AtDriverConstants.AT_RESPONSE_CALL_END,                '%NONE%');
-        this.add(AtDriverConstants.AT_RESPONSE_COPS,                    '+COPS:');
-        this.add(AtDriverConstants.AT_RESPONSE_MEM_FULL,                '%NONE%');
-        this.add(AtDriverConstants.AT_RESPONSE_STK,                     '%NONE%');
-        this.add(AtDriverConstants.AT_RESPONSE_CME_ERROR,               '+CME ERROR:');
-        this.add(AtDriverConstants.AT_RESPONSE_CMS_ERROR,               '+CMS ERROR:');
-    }
-
+    /**
+     * Import commands.
+     *
+     * @param {object} commands The commands
+     */
     import(commands) {
-        if (commands !== undefined) {
-            for (const cmd in commands) {
-                this.add(cmd, commands[cmd]);
-            }
+        commands = commands || {};
+        for (const cmd in commands) {
+            this.add(cmd, commands[cmd]);
         }
     }
 
+    /**
+     * Check if key is not undefined.
+     *
+     * @param {string} key The key to check
+     * @throws {Error}
+     */
     check(key) {
         if (key === undefined) {
             throw new Error('Key must be defined!');
         }
     }
 
+    /**
+     * Add a command.
+     *
+     * @param {string} key Command key
+     * @param {string} value Command value
+     */
     add(key, value) {
         this.check(key);
         this.commands[key] = value;
     }
 
-    get(key) {
+    /**
+     * Get command value.
+     *
+     * @param {string} key Command key
+     * @param {object} vars Command variables
+     * @returns {string|undefined}
+     */
+    get(key, vars = null) {
         this.check(key);
         if (this.commands[key]) {
-            return this.commands[key];
+            let value = this.commands[key];
+            // substitude character => $XX
+            let match;
+            while (match = value.match(/\$([a-zA-Z0-9]{2})/)) {
+                value = value.substr(0, match.index) + String.fromCharCode(parseInt('0x' + match[1])) +
+                    value.substr(match.index + match[0].length);
+            }
+            // replace place holder
+            const replacements = Object.assign({'NONE': '', 'CR': '\r', 'LF': '\n'}, vars || {});
+            return ntutil.trans(value, replacements);
         }
     }
 
+    /**
+     * Is a command defined?
+     *
+     * @param {string} key Command key
+     * @returns {boolean}
+     */
     has(key) {
         this.check(key);
         return this.commands[key] !== undefined ? true : false;
@@ -238,10 +128,54 @@ class AtDriver {
 
 /**
  * AT driver collection.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtDrivers {
 
     drivers = {}
+
+    constructor(factory) {
+        this.factory = factory;
+    }
+
+    /**
+     * Get non command property of object.
+     *
+     * @param {object} o The object
+     * @returns {string|undefined}
+     */
+    getNonCmdProp(o) {
+        if (typeof o === 'object') {
+            const keys = Object.keys(o);
+            if (keys.length === 1) {
+                if (this.prefixes === undefined) {
+                    this.prefixes = [];
+                    const commands = this.factory.defaults();
+                    Object.keys(commands).forEach(cmd => {
+                        const idx = cmd.indexOf('_');
+                        if (idx > 0) {
+                            cmd = cmd.substr(0, idx + 1);
+                        }
+                        if (this.prefixes.indexOf(cmd) < 0) {
+                            this.prefixes.push(cmd);
+                        }
+                    });
+                }
+                const key = keys[0];
+                let cmd = false;
+                this.prefixes.forEach(prefix => {
+                    if (key.substr(0, prefix.length) === prefix) {
+                        cmd = true;
+                        return true;
+                    }
+                });
+                if (!cmd) {
+                    return key;
+                }
+            }
+        }
+    }
 
     /**
      * Load driver from INI file.
@@ -253,28 +187,43 @@ class AtDrivers {
             const config = ini.parse(fs.readFileSync(filename, 'utf-8'));
             for (const key in config) {
                 let items = config[key];
-                let drvName = key;
-                let drvDesc = key;
-                let drvParent = null;
+                let drvName = key, drvDesc = key, drvParent = null;
                 // description
-                let s = AtDriverUtil.getNonCmdProps(items);
+                let s = this.getNonCmdProp(items);
                 if (s !== undefined) {
                     drvDesc = s;
                     items = items[s];
                 }
                 // parent
-                s = AtDriverUtil.getNonCmdProps(items);
+                s = this.getNonCmdProp(items);
                 if (s !== undefined) {
                     drvParent = this.get(s);
                     items = items[s];
                 }
-                const drv = new AtDriver(drvParent);
-                drv.name = drvName;
-                drv.desc = drvDesc;
+                const drv = this.create(drvName, drvDesc, drvParent);
                 drv.import(items);
                 this.add(drv);
             }
         }
+    }
+
+    /**
+     * Create a driver.
+     *
+     * @param {string} name Driver name
+     * @param {string} desc Driver description
+     * @param {AtDriver} parent Driver parent
+     * @returns {AtDriver}
+     */
+    create(name = null, desc = null, parent = null) {
+        const drv = new AtDriver(this.factory, parent);
+        if (name) {
+            drv.name = name;
+        }
+        if (desc) {
+            drv.desc = desc;
+        }
+        return drv;
     }
 
     /**
@@ -310,9 +259,15 @@ class AtDrivers {
      * @returns {String[]}
      */
     names() {
-        return AtDriverUtil.getObjectProps(this.drivers);
+        return Object.keys(this.drivers);
     }
 
+    /**
+     * Get driver matched a name.
+     *
+     * @param {string} s Driver name to search for
+     * @returns {string}
+     */
     match(s) {
         let driver = '';
         for (const drv in this.drivers) {
@@ -331,33 +286,13 @@ class AtDrivers {
     }
 }
 
-/**
- * AT driver utility.
- */
-class AtDriverUtil {
-
-    static getObjectProps(o) {
-        return Object.keys(o);
+module.exports = factory => {
+    const drivers = new AtDrivers(factory);
+    const defaultDriver = factory.DefaultDriver;
+    if (defaultDriver !== undefined && drivers.get(defaultDriver) === undefined) {
+        drivers.add(drivers.create(defaultDriver));
     }
-
-    static getNonCmdProps(o) {
-        const keys = this.getObjectProps(o);
-        if (keys.length === 1) {
-            if (keys[0].substr(0, 4) !== 'CMD_' &&
-                keys[0].substr(0, 6) !== 'PARAM_' &&
-                keys[0].substr(0, 9) !== 'RESPONSE_') {
-                return keys[0];
-            }
-        }
-    }
+    return drivers;
 }
-
-const drivers = new AtDrivers();
-if (drivers.get('Generic') === undefined) {
-    drivers.add(new AtDriver());
-}
-
-module.exports = {
-    AtDriver: drivers,
-    AtDriverConstants,
-}
+module.exports.AtDriver = AtDriver;
+module.exports.AtDrivers = AtDrivers;

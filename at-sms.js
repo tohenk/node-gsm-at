@@ -38,6 +38,8 @@ let sms;
 
 /**
  * GSM SMS functions, originally taken from https://sourceforge.net/projects/fma/.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtSms {
 
@@ -773,6 +775,8 @@ class AtSms {
 
 /**
  * SMS message.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtSmsMessage {
 
@@ -1072,6 +1076,8 @@ class AtSmsMessage {
 
 /**
  * SMS status report.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtSmsStatusReport {
 

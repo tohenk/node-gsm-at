@@ -22,14 +22,21 @@
  * SOFTWARE.
  */
 
-const token = require('@ntlab/ntlib/token');
-const { AtDriverConstants } = require('./at-driver');
+const AtDriverConstants = require('./at-driver-const');
 const { AtModem } = require('./at-modem');
 const { AtSms } = require('./at-sms');
 const AtNetwork = require('./at-network');
+const token = require('@ntlab/ntlib/token');
+
+/**
+ * @callback processorHandler
+ * @param {object} data The data
+ */
 
 /**
  * AT GSM response processor.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtProcessor {
 
@@ -44,17 +51,16 @@ class AtProcessor {
         this.register();
     }
 
+    /**
+     * Process repsonse data.
+     *
+     * @param {AtProcessorData} data Data to process
+     */
     process(data) {
-        const matches = this.handler(data);
+        const matches = this.handle(data);
         if (matches.length) {
             matches.forEach(match => {
-                Object.assign(data, {
-                    index: match.index,
-                    code: match.code,
-                    value: match.value,
-                    tokens: match.tokens,
-                    matched: match.matched
-                });
+                Object.assign(data, match);
                 const result = match.handler(data);
                 if (typeof result === 'object') {
                     if (!data.result) {
@@ -73,15 +79,40 @@ class AtProcessor {
         }
     }
 
-    handler(data) {
+    /**
+     * Get response handler.
+     *
+     * @param {AtProcessorData} data The data
+     * @returns {object[]}
+     */
+    handle(data) {
         const matches = [];
-        for (let i = 0; i < this.processors.length; i++) {
-            const proc = this.processors[i];
-            const result = data.match(proc);
-            if (typeof result === 'object') {
-                result.handler = proc.handler;
-                matches.push(result);
+        /**
+         * A processor matcher.
+         *
+         * @param {AtProcessorData} data The data
+         * @param {object} processor The processor
+         * @param {string} processor.cmd Command
+         * @param {number} processor.len Minimum arguments count
+         * @param {string|undefined} processor.separator Argument separator
+         * @param {processorHandler} processor.handler Handler
+         */
+        const f = (data, processor) => {
+            const result = data.match(processor);
+            if (Array.isArray(result)) {
+                result.forEach(res => {
+                    if (typeof res === 'object') {
+                        res.handler = processor.handler;
+                        matches.push(res);
+                    }
+                });
             }
+        }
+        for (let i = 0; i < this.processors.length; i++) {
+            f(data, this.processors[i]);
+        }
+        if (matches.length === 0 && typeof this.onHandler === 'function') {
+            this.onHandler(data, f);
         }
         if (matches.length > 1) {
             matches.sort((a, b) => a.index - b.index);
@@ -89,17 +120,28 @@ class AtProcessor {
         return matches;
     }
 
-    add(cmd, len, separator, handler) {
+    add(cmd, len, separator, raw, handler) {
         const processor = {
             cmd: cmd,
             len: len
+        }
+        if (typeof raw === 'function') {
+            handler = raw;
+            raw = null;
         }
         if (typeof separator === 'function') {
             handler = separator;
             separator = null;
         }
+        if (typeof separator === 'boolean') {
+            raw = separator;
+            separator = null;
+        }
         if (separator) {
             processor.separator = separator;
+        }
+        if (raw) {
+            processor.raw = true;
         }
         processor.handler = handler;
         this.processors.push(processor);
@@ -128,7 +170,6 @@ class AtProcessor {
         this.add(AtDriverConstants.AT_RESPONSE_CMGS, 1, data => this.handleCMGS(data));
         this.add(AtDriverConstants.AT_RESPONSE_CUSD, 1, '\n', data => this.handleCUSD(data));
         this.add(AtDriverConstants.AT_RESPONSE_MEM_FULL, 1, data => this.handleMEMFULL(data));
-        this.add(AtDriverConstants.AT_RESPONSE_STK, 1, data => this.handleSTK(data));
     }
 
     readPDU(data) {
@@ -457,17 +498,12 @@ class AtProcessor {
             memfull: data.tokens[0]
         }
     }
-
-    handleSTK(data) {
-        // +STIN: 1
-        return {
-            stk: data.tokens[0]
-        }
-    }
 }
 
 /**
  * AT response data.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtProcessorData {
 
@@ -484,6 +520,9 @@ class AtProcessorData {
         this.clean();
     }
 
+    /**
+     * Clean responses.
+     */
     clean() {
         let index = this.responses.length;
         while (index >= 0) {
@@ -494,24 +533,47 @@ class AtProcessorData {
         }
     }
 
+    /**
+     * Get reponse match using the processor.
+     *
+     * @param {object} processor The processor
+     * @param {string} processor.cmd Command
+     * @param {number} processor.len Minimum arguments count
+     * @param {string|undefined} processor.separator Argument separator
+     * @param {processorHandler} processor.handler Handler
+     * @returns {object[]}
+     */
     match(processor) {
+        const res = [];
         let i = 0;
         while (true) {
             if (i === this.responses.length) {
                 break;
             }
-            let result = this.matchAt(processor, i);
+            const result = this.matchAt(processor, i);
             if (result.matched) {
-                return result;
+                res.push(result);
             }
             i++;
         }
+        return res;
     }
 
+    /**
+     * Get reponse match using the processor at specified index.
+     *
+     * @param {object} processor The processor
+     * @param {string} processor.cmd Command
+     * @param {number} processor.len Minimum arguments count
+     * @param {string|undefined} processor.separator Argument separator
+     * @param {processorHandler} processor.handler Handler
+     * @param {number} index Response index
+     * @returns {object}
+     */
     matchAt(processor, index) {
         const result = {};
         if (index < this.responses.length) {
-            const command = this.parent.getCmd(processor.cmd);
+            const command = processor.raw ? processor.cmd : this.parent.getCmd(processor.cmd);
             const response = this.responses[index];
             if (this.isMatch(command, response)) {
                 let value = null, tokens = null;
@@ -526,7 +588,9 @@ class AtProcessorData {
                                 break;
                             }
                             if (nextIndex > index) {
-                                if (processor.separator) value += processor.separator;
+                                if (processor.separator) {
+                                    value += processor.separator;
+                                }
                                 value += this.responses[nextIndex];
                             }
                             okay = true;
@@ -562,11 +626,16 @@ class AtProcessorData {
         return result;
     }
 
+    /**
+     * Is command matched sub string of response.
+     *
+     * @param {string} command Command
+     * @param {string} response Response
+     * @returns {boolean|undefined}
+     */
     isMatch(command, response) {
-        if (command) {
-            if (response.toLowerCase().substring(0, command.length) === command.toLowerCase()) {
-                return true;
-            }
+        if (command && response.toLowerCase().substring(0, command.length) === command.toLowerCase()) {
+            return true;
         }
         return false;
     }

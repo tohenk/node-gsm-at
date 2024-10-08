@@ -22,72 +22,85 @@
  * SOFTWARE.
  */
 
-const util = require('util');
-const Work = require('@ntlab/work/work');
-const { AtDriver } = require('./at-driver');
+const AtDriver = require('./at-driver');
+const AtDriverConstants = require('./at-driver-const');
+const AtStkConstants = require('./at-stk-const');
 const AtGsm = require('./at-gsm');
+const Work = require('@ntlab/work/work');
 
 /**
  * AT modems pool.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtPool {
 
-    Driver = AtDriver
+    Driver = AtDriver(AtDriverConstants)
+    Stk = AtDriver(AtStkConstants)
+
+    constructor() {
+        this.items = {};
+        if (AtGsm.getDrivers() === undefined) {
+            AtGsm.setDrivers(this.Driver);
+        }
+    }
 
     init(factory, config) {
-        this.items = {};
         this.streamFactory = factory;
         this.config = config;
     }
 
     open(streamName) {
-        const gsm = this.get(streamName);
-        if (gsm) {
-            return Promise.resolve(gsm);
-        }
-        if (typeof this.streamFactory !== 'function') {
-            return Promise.reject('Invalid stream factory, only function accepted.');
-        }
         return Work.works([
-            [w => this.streamFactory(streamName)],
-            [w => new Promise((resolve, reject) => {
-                console.log('%s: Try detecting modem...', streamName);
-                resolve(new AtGsm(streamName, w.getRes(0), this.config));
-            })],
-            [w => new Promise((resolve, reject) => {
-                const gsm = w.getRes(1);
+            ['opened', w => Promise.resolve(this.get(streamName))],
+            ['check-factory', w => Promise.reject('Invalid stream factory, only function accepted.'),
+                w => !w.getRes('opened') && typeof this.streamFactory !== 'function'],
+            ['stream', w => this.streamFactory(streamName),
+                w => !w.getRes('opened')],
+            ['log-detect', w => Promise.resolve(console.log('%s: Try detecting modem...', streamName)),
+                w => !w.getRes('opened')],
+            ['gsm', w => Promise.resolve(new AtGsm(streamName, w.getRes('stream'), this.config)),
+                w => !w.getRes('opened')],
+            ['driver', w => new Promise((resolve, reject) => {
+                /** @type {AtGsm} */
+                const gsm = w.getRes('gsm');
                 gsm.detect()
                     .then(res => resolve(res))
-                    .catch(err => reject(new Error(util.format('%s: not an AT modem.', streamName))));
-            })],
-            [w => new Promise((resolve, reject) => {
-                const driver = w.getRes(2);
-                console.log('%s: Modem successfully detected as %s.', streamName, driver.desc);
-                resolve(driver);
-            })],
-            [w => w.getRes(1).initialize()],
-            [w => new Promise((resolve, reject) => {
-                const gsm = w.getRes(1);
+                    .catch(err => `${streamName}: not an AT modem.`);
+            }), w => !w.getRes('opened')],
+            ['log-detected', w => Promise.resolve(
+                console.log('%s: Modem successfully detected as %s.', streamName, w.getRes('driver').desc)),
+                w => !w.getRes('opened')],
+            ['initialize', w => w.getRes('gsm').initialize(),
+                w => !w.getRes('opened')],
+            ['finish', w => new Promise((resolve, reject) => {
+                /** @type {AtGsm} */
+                const gsm = w.getRes('gsm');
                 this.items[streamName] = gsm;
-                console.log('%s: Modem information:', streamName);
-                console.log('-'.repeat(50));
-                console.log('Manufacturer       = %s', gsm.info.manufacturer);
-                console.log('Model              = %s', gsm.info.model);
-                console.log('Version            = %s', gsm.info.version);
-                console.log('Serial             = %s', gsm.info.serial);
-                console.log('IMSI               = %s', gsm.info.imsi);
-                console.log('Call monitor       = %s', gsm.info.hasCall ? 'yes' : 'no');
-                console.log('SMS monitor        = %s', gsm.info.hasSms ? 'yes' : 'no');
-                console.log('USSD monitor       = %s', gsm.info.hasUssd ? 'yes' : 'no');
-                console.log('Charsets           = %s', gsm.props.charsets.join(', '));
-                console.log('Default charset    = %s', gsm.props.charset);
-                console.log('SMS Mode           = %s', gsm.props.smsMode);
-                console.log('Default storage    = %s', gsm.props.storage);
-                console.log('SMSC               = %s', gsm.props.smsc);
-                console.log('Network operator   = %s', gsm.props.network.code);
-                console.log('-'.repeat(50));
+                console.log('%s: Modem information:',      streamName);
+                console.log('%s: %s',                      streamName, '-'.repeat(50));
+                console.log('%s: Manufacturer       = %s', streamName, gsm.info.manufacturer);
+                console.log('%s: Model              = %s', streamName, gsm.info.model);
+                console.log('%s: Version            = %s', streamName, gsm.info.version);
+                console.log('%s: Serial             = %s', streamName, gsm.info.serial);
+                console.log('%s: IMSI               = %s', streamName, gsm.info.imsi);
+                console.log('%s: Call monitor       = %s', streamName, gsm.info.hasCall ? 'yes' : 'no');
+                console.log('%s: SMS monitor        = %s', streamName, gsm.info.hasSms ? 'yes' : 'no');
+                console.log('%s: USSD monitor       = %s', streamName, gsm.info.hasUssd ? 'yes' : 'no');
+                console.log('%s: Charsets           = %s', streamName, gsm.props.charsets.join(', '));
+                console.log('%s: Default charset    = %s', streamName, gsm.props.charset);
+                console.log('%s: SMS Mode           = %s', streamName, gsm.props.smsMode);
+                console.log('%s: Default storage    = %s', streamName, gsm.props.storage);
+                console.log('%s: SMSC               = %s', streamName, gsm.props.smsc);
+                console.log('%s: Network operator   = %s', streamName, gsm.props.network.code);
+                console.log('%s: %s',                      streamName, '-'.repeat(50));
+                const stk = this.Stk.match(gsm.driver.desc);
+                if (stk.length) {
+                    console.log('%s: Using STK %s', streamName, stk);
+                    gsm.useStk(this.Stk.get(stk));
+                }
                 resolve(gsm);
-            })],
+            }), w => !w.getRes('opened')],
         ]);
     }
 

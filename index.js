@@ -28,4 +28,5 @@ module.exports = {
     AtPool: require('./at-pool'),
     AtConst: require('./at-const'),
     AtDriverIni: path.join(__dirname, 'Drivers.ini'),
+    AtStkIni: path.join(__dirname, 'Stk.ini'),
 }

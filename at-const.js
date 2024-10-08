@@ -24,6 +24,8 @@
 
 /**
  * AT constants.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtConst {
 

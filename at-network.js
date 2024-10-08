@@ -24,6 +24,8 @@
 
 /**
  * AT GSM network processor.
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class AtNetwork {
 
