@@ -515,22 +515,9 @@ class AtProcessorData {
      */
     constructor(parent, response) {
         this.parent = parent;
-        this.responses = Array.isArray(response) ? response :
-            response.split(this.parent.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR));
-        this.clean();
-    }
-
-    /**
-     * Clean responses.
-     */
-    clean() {
-        let index = this.responses.length;
-        while (index >= 0) {
-            index--;
-            if ('' === this.responses[index]) {
-                this.responses.splice(index, 1);
-            }
-        }
+        this.responses = (Array.isArray(response) ? response :
+                response.split(this.parent.terminator))
+            .filter(a => a.trim().length);
     }
 
     /**

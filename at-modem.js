@@ -80,6 +80,7 @@ class AtModem extends EventEmitter {
             throw new Error('Unknown driver ' + name);
         }
         this.driver = driver;
+        this.terminator = this.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR);
     }
 
     detect() {
@@ -139,9 +140,16 @@ class AtModem extends EventEmitter {
         // when state is busy, received data should be ignored
         // as its already handled by tx
         if (!this.status.busy) {
-            data = ntutil.cleanEol(data);
-            this.log('RX> %s', data);
-            this.recv(data);
+            this.log('RX> %s', ntutil.cleanEol(data));
+            if (this.rxd === undefined) {
+                this.rxd = new AtRx(this.terminator);
+            }
+            this.rxd.add(data);
+            if (this.rxd.completed) {
+                const lines = this.rxd.lines;
+                delete this.rxd;
+                this.recv(lines);
+            }
         }
     }
 
@@ -159,6 +167,7 @@ class AtModem extends EventEmitter {
                     params.ignore = options.ignore;
                 }
                 const txres = new AtResponse(this, params);
+                const rxd = new AtRx(this.terminator);
                 // set data for error handler
                 txres.data = data;
                 const t = () => {
@@ -172,9 +181,9 @@ class AtModem extends EventEmitter {
                         clearTimeout(timeout);
                         timeout = null;
                     }
-                    buffer = ntutil.cleanEol(buffer);
-                    this.log('RX> %s', buffer);
-                    if (txres.check(buffer)) {
+                    this.log('RX> %s', ntutil.cleanEol(buffer));
+                    rxd.add(buffer);
+                    if (rxd.completed && txres.check(rxd)) {
                         this.setState({busy: false});
                         if (txres.okay) {
                             resolve(txres);
@@ -182,25 +191,27 @@ class AtModem extends EventEmitter {
                         if (txres.error) {
                             reject(txres);
                         }
-                        if (txres.extras) {
+                        if (Array.isArray(txres.extras) && txres.extras.length) {
                             this.recv(txres.extras);
                         }
                     } else {
-                        timeout = setTimeout(t, options.timeout || this.timeout);
-                        this.stream.once('data', f);
+                        s();
                     }
+                }
+                const s = () => {
+                    timeout = setTimeout(t, options.timeout || this.timeout);
+                    this.stream.once('data', f);
                 }
                 if (this.timedout >= 100) {
                     this.debug('!!! %s: Timeout threshold reached, modem may be unresponsive. Try to restart', this.name);
                 }
                 this.log('TX> %s', data);
-                this.stream.write(data + this.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR), err => {
+                this.stream.write(data + this.terminator, err => {
                     if (err) {
                         this.log('ERR> %s', err.message);
                         return reject(err);
                     }
-                    timeout = setTimeout(t, options.timeout || this.timeout);
-                    this.stream.once('data', f);
+                    s();
                 });
             } else {
                 reject('No data to transmit.');
@@ -312,6 +323,62 @@ class AtModem extends EventEmitter {
 }
 
 /**
+ * AT received data.
+ *
+ * @author Toha <tohenk@yahoo.com>
+ */
+class AtRx {
+
+    /**
+     * Constructor.
+     *
+     * @param {string} terminator Line terminator
+     */
+    constructor(terminator) {
+        this.terminator = terminator;
+    }
+
+    /**
+     * Add received buffer.
+     *
+     * @param {Buffer} buffer Content
+     * @returns {AtRx}
+     */
+    add(buffer) {
+        if (this.buffer === undefined) {
+            this.buffer = Buffer.from(buffer);
+        } else {
+            this.buffer = Buffer.concat([this.buffer, buffer]);
+        }
+        return this;
+    }
+
+    /**
+     * Check if received data is complete.
+     *
+     * @returns {boolean}
+     */
+    get completed() {
+        if (this.buffer) {
+            return this.buffer.toString().endsWith(this.terminator);
+        }
+    }
+
+    /**
+     * Get received data as lines.
+     *
+     * @returns {string[]}
+     */
+    get lines() {
+        if (this.buffer) {
+            return this.buffer.toString()
+                .split(this.terminator)
+                .filter(a => a.trim().length);
+        }
+    }
+}
+
+/**
  * AT response data.
  *
  * @author Toha <tohenk@yahoo.com>
@@ -321,8 +388,8 @@ class AtResponse {
     /**
      * Constructor.
      *
-     * @param {AtModem} parent 
-     * @param {Object} options 
+     * @param {AtModem} parent Parent
+     * @param {Object} options Options
      */
     constructor(parent, options) {
         options = options || {};
@@ -336,12 +403,18 @@ class AtResponse {
         this.extras = null;
     }
 
-    check(response) {
+    /**
+     * Check response result.
+     *
+     * @param {AtRx} rxd Response data
+     * @returns {boolean}
+     */
+    check(rxd) {
         let result = false;
         this.extras = null;
         this.excludeMatch = true;
         const responses = Array.from(this.responses);
-        responses.push(...this.clean(response.split(this.parent.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR))));
+        responses.push(...rxd.lines);
         if (!result && this.isExpected(responses)) {
             result = true;
         }
@@ -353,17 +426,6 @@ class AtResponse {
         }
         this.collect(responses);
         return result;
-    }
-
-    clean(responses) {
-        let index = responses.length;
-        while (index >= 0) {
-            index--;
-            if ('' === responses[index]) {
-                responses.splice(index, 1);
-            }
-        }
-        return responses;
     }
 
     collect(responses) {
@@ -388,7 +450,7 @@ class AtResponse {
             i++;
         }
         if (responses.length) {
-            this.extras = responses.join(this.parent.getCmd(AtDriverConstants.AT_PARAM_TERMINATOR));
+            this.extras = responses;
         }
     }
 
