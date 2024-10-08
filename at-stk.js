@@ -557,9 +557,9 @@ class AtStkCmd {
 class AtStkToken {
 
     matcher = {
-        '`': (a, b) => parseInt(a) == b,
-        '*': (a, b) => true,
-        '': (a, b) => a == b,
+        '`': (a, b) => parseInt(b) == b,    // match number
+        '*': (a, b) => true,                // match any
+        '':  (a, b) => a == b,              // match literal
     }
 
     /**

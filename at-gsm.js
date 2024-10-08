@@ -271,13 +271,6 @@ class AtGsm extends AtModem {
         });
     }
 
-    canReadReportStorage() {
-        const storage = this.getCmd(AtDriverConstants.AT_PARAM_REPORT_STORAGE);
-        if (storage && this.props.storages && this.props.storages[storage] && this.props.storages[storage].used > 0) {
-            return true;
-        }
-    }
-
     processStates() {
         if (this.idle) {
             if (this.memfull && !this.storageCleaning) {
@@ -285,11 +278,14 @@ class AtGsm extends AtModem {
                 this.cleanStorage(this.memfull, () => {
                     delete this.memfull;
                     this.storageCleaning = false;
+                    this.checkQueues();
                 });
-            } else if (this.canReadReportStorage() && !this.reportCleaning) {
+            } else if (this.props.hasreport && !this.reportCleaning) {
                 this.reportCleaning = true;
                 this.cleanStorage(this.getCmd(AtDriverConstants.AT_PARAM_REPORT_STORAGE), () => {
+                    delete this.props.hasreport;
                     this.reportCleaning = false;
+                    this.checkQueues();
                 });
             } else {
                 this.checkQueues();
@@ -333,17 +329,25 @@ class AtGsm extends AtModem {
             }
             delete this.props.caller;
         }
-        if (this.props.storages && !this.props.memfull) {
+        if (this.props.storages) {
             Object.assign(this.storages, this.props.storages);
-            Object.keys(this.props.storages).forEach(storage => {
-                if (this.props.storages[storage].used === this.props.storages[storage].total) {
-                    if (!this.props.memfull) {
-                        this.props.memfull = [storage]
-                    } else {
-                        this.props.memfull.push(storage);
+            if (!this.props.memfull) {
+                Object.keys(this.storages).forEach(storage => {
+                    if (this.storages[storage].used === this.storages[storage].total) {
+                        if (!this.props.memfull) {
+                            this.props.memfull = [storage]
+                        } else {
+                            this.props.memfull.push(storage);
+                        }
                     }
+                });
+            }
+            const storage = this.getCmd(AtDriverConstants.AT_PARAM_REPORT_STORAGE);
+            if (storage && !this.props.hasreport) {
+                if (this.storages[storage] && this.storages[storage].used > 0) {
+                    this.props.hasreport = true;
                 }
-            });
+            }
             this.emit('storage');
             delete this.props.storages;
         }
@@ -694,11 +698,7 @@ class AtGsm extends AtModem {
                             msg = `${err.data}: Operation failed`;
                         }
                     }
-                    const error = new Error(`${this.name}: ${msg}`);
-                    if (err instanceof Error) {
-                        error.previous = err;
-                    }
-                    reject(error);
+                    reject(`${this.name}: ${msg}`);
                 })
             ;
         });
