@@ -694,11 +694,11 @@ class AtGsm extends AtModem {
                     let msg = err;
                     if (err instanceof AtResponse) {
                         if (err.timeout) {
-                            msg = `${err.data}: Operation timeout`;
+                            msg = `${err.cmd}: Operation timeout`;
                         } else if (err.error && err.hasResponse()) {
-                            msg = `${err.data}: ${err.res()}`;
+                            msg = `${err.cmd}: ${err.res()}`;
                         } else {
-                            msg = `${err.data}: Operation failed`;
+                            msg = `${err.cmd}: Operation failed`;
                         }
                     }
                     reject(`${this.name}: ${msg}`);

@@ -159,7 +159,7 @@ class AtModem extends EventEmitter {
                 options = options || {};
                 this.setState({busy: true});
                 let timeout = null;
-                const params = {};
+                const params = {cmd: data};
                 if (options.expect) {
                     params.expect = options.expect;
                 }
@@ -168,8 +168,6 @@ class AtModem extends EventEmitter {
                 }
                 const txres = new AtResponse(this, params);
                 const rxd = new AtRx(this.terminator);
-                // set data for error handler
-                txres.data = data;
                 const t = () => {
                     this.setState({busy: false});
                     this.timedout++;
@@ -389,11 +387,15 @@ class AtResponse {
      * Constructor.
      *
      * @param {AtModem} parent Parent
-     * @param {Object} options Options
+     * @param {object} options Options
+     * @param {string} options.cmd AT command
+     * @param {string|string[]} options.expect Expected responses
+     * @param {string|string[]} options.ignore Ignored responses
      */
     constructor(parent, options) {
         options = options || {};
         this.parent = parent;
+        this.cmd = options.cmd || null;
         this.expect = options.expect || null;
         this.ignore = options.ignore || null;
         this.okay = false;
@@ -411,20 +413,26 @@ class AtResponse {
      */
     check(rxd) {
         let result = false;
-        this.extras = null;
-        this.excludeMatch = true;
-        const responses = Array.from(this.responses);
-        responses.push(...rxd.lines);
-        if (!result && this.isExpected(responses)) {
-            result = true;
+        const lines = rxd.lines;
+        // ignore AT echo response
+        if (this.cmd && lines.length && lines[0] === this.cmd) {
+            lines.shift();
         }
-        if (!result && this.isOkay(responses)) {
-            result = true;
+        if (lines.length) {
+            this.extras = null;
+            this.excludeMatch = true;
+            const responses = [...this.responses, ...lines];
+            if (!result && this.isExpected(responses)) {
+                result = true;
+            }
+            if (!result && this.isOkay(responses)) {
+                result = true;
+            }
+            if (!result && this.isError(responses)) {
+                result = true;
+            }
+            this.collect(responses);
         }
-        if (!result && this.isError(responses)) {
-            result = true;
-        }
-        this.collect(responses);
         return result;
     }
 
