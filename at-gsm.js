@@ -86,9 +86,9 @@ class AtGsm extends AtModem {
             [w => this.getInfos()],
             [w => this.getCharset()],
             [w => this.getSmsMode()],
-            [w => this.applyDefaultStorage()],
             [w => this.getSMSC()],
             [w => this.getNetwork()],
+            [w => this.applyDefaultStorage()],
             [w => this.attachSignalMonitor()],
             [w => this.attachStorageMonitor()],
         ]);
@@ -189,8 +189,19 @@ class AtGsm extends AtModem {
 
     resolveUnprocessed(data) {
         let result, resolved, len, response, nextdata, handler;
-        const unprocessed = Array.isArray(this.unprocessed) ? this.unprocessed : [];
-        unprocessed.push(...data.unprocessed);
+        const ignores = [
+            this.getCmd(AtDriverConstants.AT_RESPONSE_OK),
+            this.getCmd(AtDriverConstants.AT_RESPONSE_ERROR),
+        ]
+        while (true) {
+            if (data.unprocessed.length && ignores.indexOf(data.unprocessed[0]) >= 0) {
+                data.unprocessed.shift();
+                continue;
+            }
+            break;
+        }
+        const unprocessed = (Array.isArray(this.unprocessed) ? this.unprocessed : [])
+            .push(...data.unprocessed);
         for (let i = 0; i < unprocessed.length; i++) {
             response = unprocessed[i];
             if (i + 1 < unprocessed.length) {
