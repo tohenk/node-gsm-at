@@ -103,7 +103,6 @@ class AtDriverConstants {
     static get AT_RESPONSE_CALL_END()                               { return 'RESPONSE_CALL_END' }
     static get AT_RESPONSE_COPS()                                   { return 'RESPONSE_COPS' }
     static get AT_RESPONSE_MEM_FULL()                               { return 'RESPONSE_MEM_FULL' }
-    static get AT_RESPONSE_STK()                                    { return 'RESPONSE_STK' }
     static get AT_RESPONSE_CME_ERROR()                              { return 'RESPONSE_CME_ERROR' }
     static get AT_RESPONSE_CMS_ERROR()                              { return 'RESPONSE_CMS_ERROR' }
 
@@ -184,7 +183,6 @@ class AtDriverConstants {
             [AtDriverConstants.AT_RESPONSE_CALL_END]:               '%NONE%',
             [AtDriverConstants.AT_RESPONSE_COPS]:                   '+COPS:',
             [AtDriverConstants.AT_RESPONSE_MEM_FULL]:               '%NONE%',
-            [AtDriverConstants.AT_RESPONSE_STK]:                    '%NONE%',
             [AtDriverConstants.AT_RESPONSE_CME_ERROR]:              '+CME ERROR:',
             [AtDriverConstants.AT_RESPONSE_CMS_ERROR]:              '+CMS ERROR:',
         }
