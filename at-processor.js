@@ -238,7 +238,17 @@ class AtProcessor {
                                 storageStatus = tokens[1];
                                 break;
                         }
-                        result.push({storage: storage, index: storageIndex, status: storageStatus, message: msg});
+                        const res = {message: msg};
+                        if (storage) {
+                            res.storage = storage;
+                        }
+                        if (storageIndex) {
+                            res.index = storageIndex;
+                        }
+                        if (storageStatus) {
+                            res.status = storageStatus;
+                        }
+                        result.push(res);
                     }
                 }
             }

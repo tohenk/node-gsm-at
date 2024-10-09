@@ -462,7 +462,10 @@ class AtGsm extends AtModem {
                 if (report || this.options.deleteMessageOnRead) {
                     for (let i = 0; i < indexes.length; i++) {
                         index = indexes[i];
-                        this.deleteStorageQueued(this.messages[index].storage, this.messages[index].index);
+                        const info = this.messages[index];
+                        if (info.storage !== undefined && info.index !== undefined) {
+                            this.deleteStorageQueued(info.storage, info.index);
+                        }
                     }
                 }
                 for (let i = indexes.length - 1; i >= 0; i--) {
