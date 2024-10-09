@@ -109,14 +109,8 @@ class AtModem extends EventEmitter {
     }
 
     setState(state) {
-        let idle = true;
         Object.assign(this.status, state);
-        Object.values(this.status).forEach(value => {
-            if (value === true) {
-                idle = false;
-                return true;
-            }
-        });
+        const idle = this.isIdle();
         if (this.idle !== idle) {
             this.idle = idle;
             const states = [];
@@ -127,6 +121,10 @@ class AtModem extends EventEmitter {
             });
             this.emit('state', states);
         }
+    }
+
+    isIdle() {
+        return Object.values(this.status).indexOf(true) < 0;
     }
 
     propChanged(props) {

@@ -435,10 +435,11 @@ class AtGsm extends AtModem {
                     })
                 ;
             }, () => {
-                if (!this.idle) {
+                const idle = this.isIdle();
+                if (!idle) {
                     this.debug('%s: Queue operation pending because of activity', this.name);
                 }
-                return this.idle;
+                return idle;
             });
         } else {
             this.q.requeue([data]);
