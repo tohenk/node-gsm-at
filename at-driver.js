@@ -88,7 +88,22 @@ class AtDriver {
      */
     add(key, value) {
         this.check(key);
-        this.commands[key] = value;
+        this.commands[key] = this.normalize(value);
+    }
+
+    /**
+     * Normalize string by replacing hex character placeholder $XX.
+     *
+     * @param {string} value String to normalize
+     * @returns {string}
+     */
+    normalize(value) {
+        let match;
+        while (match = value.match(/\$([a-zA-Z0-9]{2})/)) {
+            value = value.substr(0, match.index) + String.fromCharCode(parseInt('0x' + match[1])) +
+                value.substr(match.index + match[0].length);
+        }
+        return value;
     }
 
     /**
@@ -101,16 +116,7 @@ class AtDriver {
     get(key, vars = null) {
         this.check(key);
         if (this.commands[key]) {
-            let value = this.commands[key];
-            // substitude character => $XX
-            let match;
-            while (match = value.match(/\$([a-zA-Z0-9]{2})/)) {
-                value = value.substr(0, match.index) + String.fromCharCode(parseInt('0x' + match[1])) +
-                    value.substr(match.index + match[0].length);
-            }
-            // replace place holder
-            const replacements = Object.assign({'NONE': '', 'CR': '\r', 'LF': '\n'}, vars || {});
-            return ntutil.trans(value, replacements);
+            return ntutil.trans(this.commands[key], Object.assign({'NONE': '', 'CR': '\r', 'LF': '\n'}, vars || {}));
         }
     }
 
