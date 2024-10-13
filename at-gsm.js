@@ -179,7 +179,8 @@ class AtGsm extends AtModem {
                         data = nextdata;
                     }
                 }
-            } catch (err) {
+            }
+            catch (err) {
                 this.debug('!!! %s: %s', this.name, err.stack ? err.stack : err.message);
             }
             this.setState({processing: false});
@@ -255,25 +256,26 @@ class AtGsm extends AtModem {
     cleanStorage(storages, callback) {
         storages = Array.isArray(storages) ? storages : [storages];
         const q = new Queue(storages, storage => {
-            this.debug('!! %s: Doing storage cleaning on %s', this.name, storage);
-            if (storage === this.getCmd(AtDriverConstants.AT_PARAM_SMS_STORAGE)) {
-                if (this.options.emptyWhenFull) {
-                    this.debug('!! %s: Emptying full storage %s', this.name, storage);
-                    this.emptyStorage(storage)
-                        .then(() => q.next())
-                    ;
-                } else {
-                    this.debug('!! %s: ATTENTION, storage %s is full', this.name, storage);
-                    q.next();
+            try {
+                this.debug('!! %s: Doing storage cleaning on %s', this.name, storage);
+                if (storage === this.getCmd(AtDriverConstants.AT_PARAM_SMS_STORAGE)) {
+                    if (this.options.emptyWhenFull) {
+                        this.debug('!! %s: Emptying full storage %s', this.name, storage);
+                        this.emptyStorageQueued(storage);
+                    } else {
+                        this.debug('!! %s: ATTENTION, storage %s is full', this.name, storage);
+                    }
+                }
+                if (storage === this.getCmd(AtDriverConstants.AT_PARAM_REPORT_STORAGE)) {
+                    this.setStorageQueued(storage);
+                    this.listMessage(AtConst.SMS_STAT_RECV_READ)
+                        .catch(err => console.error(err));
                 }
             }
-            if (storage === this.getCmd(AtDriverConstants.AT_PARAM_REPORT_STORAGE)) {
-                Work.works([
-                    [w => this.setStorage(storage)],
-                    [w => this.listMessage(AtConst.SMS_STAT_RECV_READ)],
-                ], {alwaysResolved: true})
-                    .then(() => q.next());
+            catch (err) {
+                console.error(err);
             }
+            q.next();
         });
         q.once('done', () => {
             if (typeof callback === 'function') {
