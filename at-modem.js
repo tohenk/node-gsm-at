@@ -199,7 +199,7 @@ class AtModem extends EventEmitter {
                     this.stream.once('data', f);
                 }
                 if (this.timedout >= 100) {
-                    this.debug('!!! %s: Timeout threshold reached, modem may be unresponsive. Try to restart', this.name);
+                    this.debug('!!! Timeout threshold reached, modem may be unresponsive. Try to restart');
                 }
                 this.log('TX> %s', data);
                 this.stream.write(data + this.terminator, err => {
@@ -274,7 +274,7 @@ class AtModem extends EventEmitter {
     }
 
     log() {
-        this.logger.log.apply(this.logger, Array.from(arguments))
+        this.logger.log.apply(this.logger, [...arguments])
             .then(message => {
                 this.emit('log', message);
             })
@@ -282,14 +282,26 @@ class AtModem extends EventEmitter {
     }
 
     debug() {
-        const args = Array.from(arguments);
         if (typeof this.config.logger === 'function') {
-            this.config.logger.apply(null, args);
+            this.config.logger.apply(null, this.fmt([...arguments]));
         } else if (this.getConfig('debugToConsole', true)) {
-            console.log.apply(null, args);
+            console.log.apply(null, this.fmt([...arguments]));
         } else {
-            this.createDebugger.apply(this, args);
+            this.createDebugger.apply(this, [...arguments]);
         }
+    }
+
+    error() {
+        console.error.apply(null, this.fmt([...arguments], 'Err'));
+    }
+
+    fmt(args, type = null) {
+        if (args.length && typeof args[0] === 'string') {
+            args[0] = type ? `${this.name}: ${type}: ${args[0]}` : `${this.name}: ${args[0]}`;
+        } else {
+            args.unshift(type ? `${this.name}: ${type}:` : `${this.name}:`);
+        }
+        return args;
     }
 
     createDebugger() {

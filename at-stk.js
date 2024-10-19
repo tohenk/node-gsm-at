@@ -90,7 +90,7 @@ class AtStk {
                 this[m[0]] = [];
             }
         });
-        console.log('%s: STK prefixes: %s', this.parent.name, prefixes.join(', '));
+        this.parent.debug('STK prefixes: %s', prefixes.join(', '));
     }
 
     /**
@@ -142,7 +142,7 @@ class AtStk {
      * @param {doneCallback} done Completion callback 
      */
     consume(stk, done) {
-        console.log('%s: STK', this.parent.name, stk);
+        this.parent.debug('STK', stk);
         let handled = false;
         switch (stk.cmd) {
             /* -- action -- */
@@ -239,14 +239,14 @@ class AtStk {
                     } else {
                         this.data[menu].title = data.TITLE;
                         this.data[menu].items = [];
-                        console.log(`${this.parent.name}: STK: ${menu} title: ${data.TITLE}`);
+                        this.parent.debug(`STK: ${menu} title: ${data.TITLE}`);
                     }
                 } else {
                     if (this.data[menu].items === undefined) {
                         this.data[menu].items = [];
                     }
                     this.data[menu].items.push({id: data.ID, title: data.TITLE});
-                    console.log(`${this.parent.name}: STK: ${menu} item: ${data.TITLE} (${data.ID})`);
+                    this.parent.debug(`STK: ${menu} item: ${data.TITLE} (${data.ID})`);
                     if (Object.keys(this.data[menu].items).length === data.COUNT) {
                         this.data[menu].items.sort((a, b) => a.id - b.id);
                         this.notify({[menu]: this.data[menu]});
@@ -258,7 +258,7 @@ class AtStk {
 
     updateMessage(message) {
         this.data.message = message;
-        console.log(`${this.parent.name}: STK: message: ${message}`);
+        this.parent.debug(`STK: message: ${message}`);
         this.notify({message: this.data.message});
     }
 

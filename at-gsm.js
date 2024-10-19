@@ -48,7 +48,7 @@ class AtGsm extends AtModem {
         sendMessageAsFlash: false,
         emptyWhenFull: false,
     }
-    defaultProps = {
+    infoProps = {
         friendlyName: AtDriverConstants.AT_CMD_Q_FRIENDLY_NAME,
         manufacturer: AtDriverConstants.AT_CMD_Q_MANUFACTURER,
         model: AtDriverConstants.AT_CMD_Q_MODEL,
@@ -101,11 +101,11 @@ class AtGsm extends AtModem {
 
     getInfos() {
         return new Promise((resolve, reject) => {
-            this.txqueue(Object.values(this.defaultProps))
+            this.txqueue(Object.values(this.infoProps))
                 .then(res => {
                     const propInfos = {}, stateInfos = {}, procInfos = {};
-                    Object.keys(this.defaultProps).forEach(prop => {
-                        const value = this.defaultProps[prop];
+                    Object.keys(this.infoProps).forEach(prop => {
+                        const value = this.infoProps[prop];
                         if (prop.startsWith('process')) {
                             procInfos[prop] = value;
                         } else if (prop.startsWith('has')) {
@@ -131,11 +131,11 @@ class AtGsm extends AtModem {
         return new Promise((resolve, reject) => {
             const cmd = this.getCmd(command);
             if (!cmd) {
-                this.debug('%s: %s monitor enabled', this.name, title);
+                this.debug('%s monitor enabled', title);
                 const ms = interval || this.monitorInterval;
                 setInterval(handler, ms);
             } else {
-                this.debug('%s: %s monitor not enabled', this.name, title);
+                this.debug('%s monitor not enabled', title);
             }
             resolve();
         });
@@ -144,7 +144,7 @@ class AtGsm extends AtModem {
     attachSignalMonitor() {
         return this.attachMonitor('CSQ', AtDriverConstants.AT_RESPONSE_RSSI, () => {
             this.query(this.getCmd(AtDriverConstants.AT_CMD_CSQ))
-                .catch(err => console.error(err));
+                .catch(err => this.error(err));
         });
     }
 
@@ -181,7 +181,7 @@ class AtGsm extends AtModem {
                 }
             }
             catch (err) {
-                this.debug('!!! %s: %s', this.name, err.stack ? err.stack : err.message);
+                this.debug('!!! %s', err.stack ? err.stack : err.message);
             }
             this.setState({processing: false});
             return data;
@@ -232,7 +232,7 @@ class AtGsm extends AtModem {
             this.processor.process(nextdata);
             if (nextdata.result) {
                 result = nextdata;
-                this.debug('%s: Unprocessed resolved %s', this.name, nextdata.result);
+                this.debug('Unprocessed resolved %s', nextdata.result);
             }
             if (nextdata.unprocessed && nextdata.unprocessed.length && nextdata.index > 0) {
                 nextdata.unprocessed.splice(0, nextdata.index + 1);
@@ -248,7 +248,7 @@ class AtGsm extends AtModem {
         this.unprocessed = data;
         if (Array.isArray(this.unprocessed)) {
             this.unprocessed.forEach(s => {
-                this.debug('! %s: [%s]', this.name, s);
+                this.debug('! [%s]', s);
             });
         }
     }
@@ -257,23 +257,23 @@ class AtGsm extends AtModem {
         storages = Array.isArray(storages) ? storages : [storages];
         const q = new Queue(storages, storage => {
             try {
-                this.debug('!! %s: Doing storage cleaning on %s', this.name, storage);
+                this.debug('!! Doing storage cleaning on %s', storage);
                 if (storage === this.getCmd(AtDriverConstants.AT_PARAM_SMS_STORAGE)) {
                     if (this.options.emptyWhenFull) {
-                        this.debug('!! %s: Emptying full storage %s', this.name, storage);
+                        this.debug('!! Emptying full storage %s', storage);
                         this.emptyStorageQueued(storage);
                     } else {
-                        this.debug('!! %s: ATTENTION, storage %s is full', this.name, storage);
+                        this.debug('!! ATTENTION, storage %s is full', storage);
                     }
                 }
                 if (storage === this.getCmd(AtDriverConstants.AT_PARAM_REPORT_STORAGE)) {
                     this.setStorageQueued(storage);
                     this.listMessage(AtConst.SMS_STAT_RECV_READ)
-                        .catch(err => console.error(err));
+                        .catch(err => this.error(err));
                 }
             }
             catch (err) {
-                console.error(err);
+                this.error(err);
             }
             q.next();
         });
@@ -367,38 +367,30 @@ class AtGsm extends AtModem {
         if (this.props.memfull) {
             if (this.memfull !== this.props.memfull) {
                 this.memfull = this.props.memfull;
-                this.debug('%s: Storage %s is full', this.name, (Array.isArray(this.memfull) ? this.memfull : [this.memfull]).join(', '));
+                this.debug('Storage %s is full', (Array.isArray(this.memfull) ? this.memfull : [this.memfull]).join(', '));
             }
             delete this.props.memfull;
         }
     }
 
     processQueues(queues) {
-        queues.forEach(queue => {
-            let res;
-            switch (queue.op) {
-                case 'read':
-                    res = this.readStorageQueued(queue.storage, queue.index);
-                    break;
-                case 'delete':
-                    res = this.deleteStorageQueued(queue.storage, queue.index);
-                    break;
-                case 'command':
-                    res = this.query(queue.data, queue.options);
-                    break;
-                default:
-                    this.debug('%s: Unknown operation %s', this.name, queue.op);
-                    break;
+        const q = new Queue(queues, queue => {
+            try {
+                switch (queue.op) {
+                    case 'read':
+                        this.readStorageQueued(queue.storage, queue.index);
+                        break;
+                    case 'delete':
+                        this.deleteStorageQueued(queue.storage, queue.index);
+                        break;
+                    default:
+                        this.debug('Unknown operation %s', queue.op);
+                }
             }
-            if (res instanceof Promise) {
-                res
-                    .then(() => {
-                        this.debug('%s: Done: %s', this.name, queue);
-                    })
-                    .catch(err => {
-                        this.debug('%s: Error: %s: %s', this.name, queue, err.toString());
-                    });
+            catch (err) {
+                this.error(err);
             }
+            q.next();
         });
     }
 
@@ -412,7 +404,7 @@ class AtGsm extends AtModem {
     doQueue(data) {
         if (!this.q) {
             const next = (queue, success) => {
-                this.debug('%s: Queue %s [%s]', this.name, queue.info, success ? 'OK' : 'FAILED');
+                this.debug('Queue %s [%s]', queue.info, success ? 'OK' : 'FAILED');
                 this.q.pending = false;
                 this.q.next();
             }
@@ -439,7 +431,7 @@ class AtGsm extends AtModem {
             }, () => {
                 const idle = this.isIdle();
                 if (!idle) {
-                    this.debug('%s: Queue operation pending because of activity', this.name);
+                    this.debug('Queue operation pending because of activity');
                 }
                 return idle;
             });
@@ -549,7 +541,7 @@ class AtGsm extends AtModem {
                         msg.forEach(message => {
                             message.hash = hash;
                         });
-                        this.debug('%s: Mesage from %s completed, found %d/%d', this.name, address, count, total);
+                        this.debug('Mesage from %s completed, found %d/%d', address, count, total);
                     }
                 }
             }
@@ -560,7 +552,7 @@ class AtGsm extends AtModem {
                 processed = true;
             } else {
                 // if long messages parts was still missing then process non long one
-                this.debug('%s: Waiting for other messages part from %s, found %d/%d', this.name, msg.address, count, total);
+                this.debug('Waiting for other messages part from %s, found %d/%d', msg.address, count, total);
                 if (nextPos !== null) {
                     msg = this.messages[nextPos].message;
                     pos = nextPos;
@@ -594,7 +586,7 @@ class AtGsm extends AtModem {
                 fs.writeFileSync(this.msgRefFilename, JSON.stringify({msgref: nextRef}));
             }
             catch (err) {
-                console.error(err);
+                this.error(err);
             }
         } else {
             result = msgref;
@@ -690,7 +682,7 @@ class AtGsm extends AtModem {
                     let data;
                     if (Object.keys(storage).length) {
                         Object.assign(this.props, storage);
-                        this.debug('%s: Updating storage information from %s', this.name, storage);
+                        this.debug('Updating storage information from %s', storage);
                     }
                     if (res.hasResponse()) {
                         data = this.doProcess(res.responses);
@@ -715,7 +707,7 @@ class AtGsm extends AtModem {
                             msg = `${err.cmd}: Operation failed`;
                         }
                     }
-                    reject(`${this.name}: ${msg}`);
+                    reject(msg);
                 })
             ;
         });

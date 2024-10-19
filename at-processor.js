@@ -211,7 +211,7 @@ class AtProcessor {
                     }
                     let msg = AtSms.decode(pdu);
                     let tplen = tokens[len - 1];
-                    this.parent.debug('%s: PDU = %s, tplen = %d, expected = %d [%s]', this.parent.name, pdu, msg.tplen, tplen,
+                    this.parent.debug('PDU = %s, tplen = %d, expected = %d [%s]', pdu, msg.tplen, tplen,
                         msg.tplen === tplen ? 'OK' : 'SKIPPED');
                     if (msg.tplen === tplen) {
                         let storage, storageIndex, storageStatus;
