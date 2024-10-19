@@ -371,6 +371,21 @@ class AtGsm extends AtModem {
             }
             delete this.props.memfull;
         }
+        if (this.props.indicator) {
+            const indicator = this.props.indicator;
+            delete this.props.indicator;
+            switch (indicator) {
+                case 0: // sim removed
+                    break;
+                case 1: // sim inserted
+                    this.doInitialize()
+                        .then(() => this.debug('SIM insert initialization done'))
+                        .catch(err => this.error(err));
+                    break;
+                default:
+                    this.debug('Ignoring indication %d', indicator);
+            }
+        }
     }
 
     processQueues(queues) {

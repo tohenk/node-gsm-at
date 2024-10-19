@@ -169,6 +169,7 @@ class AtProcessor {
         this.add(AtDriverConstants.AT_RESPONSE_CMGR, 3, data => this.handleCMGR(data));
         this.add(AtDriverConstants.AT_RESPONSE_CMGS, 1, data => this.handleCMGS(data));
         this.add(AtDriverConstants.AT_RESPONSE_CUSD, 1, '\n', data => this.handleCUSD(data));
+        this.add(AtDriverConstants.AT_RESPONSE_UNSOLICITED_IND, 1, data => this.handleUnsolicitedIndication(data));
         this.add(AtDriverConstants.AT_RESPONSE_MEM_FULL, 1, data => this.handleMEMFULL(data));
     }
 
@@ -499,6 +500,13 @@ class AtProcessor {
                     code: data.tokens[0]
                 }
             }
+        }
+    }
+
+    handleUnsolicitedIndication(data) {
+        // +WIND: 1
+        return {
+            indicator: data.tokens[0]
         }
     }
 
