@@ -151,6 +151,21 @@ class AtModem extends EventEmitter {
         }
     }
 
+    waitTx(ms = 10) {
+        return new Promise((resolve, reject) => {
+            const f = () => {
+                setTimeout(() => {
+                    if (!this.status.busy) {
+                        resolve();
+                    } else {
+                        f();
+                    }
+                }, ms);
+            }
+            f();
+        });
+    }
+
     tx(data, options) {
         return new Promise((resolve, reject) => {
             if (data) {
@@ -167,10 +182,10 @@ class AtModem extends EventEmitter {
                 const txres = new AtResponse(this, params);
                 const rxd = new AtRx(this.terminator);
                 const t = () => {
-                    this.setState({busy: false});
                     this.timedout++;
                     txres.timeout = true;
                     reject(txres);
+                    this.setState({busy: false});
                 }
                 const f = buffer => {
                     if (timeout) {
@@ -180,13 +195,13 @@ class AtModem extends EventEmitter {
                     this.log('RX> %s', ntutil.cleanEol(buffer));
                     rxd.add(buffer);
                     if (rxd.completed && txres.check(rxd)) {
-                        this.setState({busy: false});
                         if (txres.okay) {
                             resolve(txres);
                         }
                         if (txres.error) {
                             reject(txres);
                         }
+                        this.setState({busy: false});
                         if (Array.isArray(txres.extras) && txres.extras.length) {
                             this.recv(txres.extras);
                         }
@@ -204,6 +219,7 @@ class AtModem extends EventEmitter {
                 this.log('TX> %s', data);
                 this.stream.write(data + this.terminator, err => {
                     if (err) {
+                        this.setState({busy: false});
                         this.log('ERR> %s', err.message);
                         return reject(err);
                     }

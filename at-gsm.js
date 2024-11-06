@@ -95,8 +95,7 @@ class AtGsm extends AtModem {
     }
 
     doInitialize() {
-        const queues = Array.from({length: 10}, (_, i) => AtDriverConstants.AT_CMD_INIT + (i > 0 ? i.toString() : ''));
-        return this.txqueue(queues);
+        return this.txqueue(Array.from({length: 10}, (_, i) => AtDriverConstants.AT_CMD_INIT + (i > 0 ? i.toString() : '')));
     }
 
     getInfos() {
@@ -692,39 +691,41 @@ class AtGsm extends AtModem {
         options = options || {};
         return new Promise((resolve, reject) => {
             const storage = this.saveStorage(cmd);
-            this.tx(cmd, options)
-                .then(res => {
-                    let data;
-                    if (Object.keys(storage).length) {
-                        Object.assign(this.props, storage);
-                        this.debug('Updating storage information from %s', storage);
+            Work.works([
+                [w => this.waitTx()],
+                [w => this.tx(cmd, options)],
+            ])
+            .then(res => {
+                let data;
+                if (Object.keys(storage).length) {
+                    Object.assign(this.props, storage);
+                    this.debug('Updating storage information from %s', storage);
+                }
+                if (res.hasResponse()) {
+                    data = this.doProcess(res.responses);
+                    if (typeof options.context === 'object' && typeof data.result === 'object') {
+                        Object.assign(options.context, data.result);
                     }
-                    if (res.hasResponse()) {
-                        data = this.doProcess(res.responses);
-                        if (typeof options.context === 'object' && typeof data.result === 'object') {
-                            Object.assign(options.context, data.result);
-                        }
-                    }
-                    if (data && data.result) {
-                        resolve(data.result);
+                }
+                if (data && data.result) {
+                    resolve(data.result);
+                } else {
+                    resolve();
+                }
+            })
+            .catch(err => {
+                let msg = err;
+                if (err instanceof AtResponse) {
+                    if (err.timeout) {
+                        msg = `${err.cmd}: Operation timeout`;
+                    } else if (err.error && err.hasResponse()) {
+                        msg = `${err.cmd}: ${err.res()}`;
                     } else {
-                        resolve();
+                        msg = `${err.cmd}: Operation failed`;
                     }
-                })
-                .catch(err => {
-                    let msg = err;
-                    if (err instanceof AtResponse) {
-                        if (err.timeout) {
-                            msg = `${err.cmd}: Operation timeout`;
-                        } else if (err.error && err.hasResponse()) {
-                            msg = `${err.cmd}: ${err.res()}`;
-                        } else {
-                            msg = `${err.cmd}: Operation failed`;
-                        }
-                    }
-                    reject(msg);
-                })
-            ;
+                }
+                reject(msg);
+            });
         });
     }
 
@@ -764,42 +765,42 @@ class AtGsm extends AtModem {
     }
 
     sendPDU(phoneNumber, message, hash) {
-        const queues = [];
+        const messages = [];
         const options = {
             requestStatus: this.options.requestMessageStatus,
             requestReply: this.options.requestMessageReply,
             flashMessage: this.options.sendMessageAsFlash
         }
         const dcs = AtSms.detectCodingScheme(message);
-        const messages = AtSms.smsSplit(dcs, message);
-        const reference = messages.length > 1 ? this.getMessageReference() : null;
-        for (let index = 0; index < messages.length; index++) {
+        const parts = AtSms.smsSplit(dcs, message);
+        const reference = parts.length > 1 ? this.getMessageReference() : null;
+        for (let index = 0; index < parts.length; index++) {
             const msg = new AtSmsMessage();
             msg.dcs = dcs;
             msg.address = phoneNumber;
-            if (messages.length > 1) {
+            if (parts.length > 1) {
                 msg.udhi = {
                     reference: reference,
-                    total: messages.length,
+                    total: parts.length,
                     index: index + 1
                 }
             }
-            if (!msg.encodeMessage(messages[index], options)) {
-                throw new Error(`${this.name}: Message "${messages[index]}" can\'t be sent.`);
+            if (!msg.encodeMessage(parts[index], options)) {
+                throw new Error(`${this.name}: Message "${parts[index]}" can\'t be sent.`);
             }
             if (!hash) {
                 // generated hash is for the whole message
                 hash = this.getHash(msg.time, this.intlNumber(phoneNumber), message);
             }
             msg.hash = hash;
-            queues.push(msg);
+            messages.push(msg);
         }
         const prompt = this.getCmd(AtDriverConstants.AT_RESPONSE_SMS_PROMPT);
         const waitPrompt = 1 === parseInt(this.getCmd(AtDriverConstants.AT_PARAM_SMS_WAIT_PROMPT)) ? true : false;
         const works = [
             [w => this.doQuery(this.getCmd(AtDriverConstants.AT_CMD_SMS_MODE_SET, {SMS_MODE: AtConst.SMS_MODE_PDU}))],
         ]
-        queues.forEach(msg => {
+        for (const msg of messages) {
             const params = {
                 SMS_LEN: msg.tplen,
                 MESSAGE: msg.pdu,
@@ -820,17 +821,17 @@ class AtGsm extends AtModem {
                     context: msg
                 })]);
             }
-        });
+        }
         return new Promise((resolve, reject) => {
             this.addQueue({name: 'sendPDU', destination: phoneNumber, message: message}, () => new Promise((resolve, reject) => {
                 const done = success => {
-                    this.setState({sending: false});
-                    this.emit('pdu', success, queues);
+                    this.emit('pdu', success, messages);
                     if (success) {
                         resolve();
                     } else {
                         reject();
                     }
+                    this.setState({sending: false});
                 }
                 this.setState({sending: true});
                 Work.works(works)
